@@ -6,6 +6,7 @@ export const articles = pgTable("articles", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  imageUrl: text("image_url"),
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 

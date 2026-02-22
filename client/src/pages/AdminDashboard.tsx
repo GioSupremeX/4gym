@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -161,6 +161,10 @@ export default function AdminDashboard() {
                       <Input name="title" required />
                     </div>
                     <div className="space-y-2">
+                      <label className="text-sm font-medium">URL Εικόνας</label>
+                      <Input name="imageUrl" placeholder="https://..." />
+                    </div>
+                    <div className="space-y-2">
                       <label className="text-sm font-medium">Περιεχόμενο</label>
                       <Textarea name="content" required rows={6} />
                     </div>
@@ -175,11 +179,20 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 {articles?.map((article) => (
                   <div key={article.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
-                    <div className="truncate mr-4">
-                      <h4 className="font-medium truncate">{article.title}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(article.publishedAt).toLocaleDateString("el-GR")}
-                      </p>
+                    <div className="flex items-center gap-3 truncate mr-4">
+                      {article.imageUrl ? (
+                        <img src={article.imageUrl} className="h-10 w-10 object-cover rounded" alt="" />
+                      ) : (
+                        <div className="h-10 w-10 bg-muted rounded flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="truncate">
+                        <h4 className="font-medium truncate">{article.title}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(article.publishedAt).toLocaleDateString("el-GR")}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

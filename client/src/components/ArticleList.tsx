@@ -1,6 +1,6 @@
 import { useArticles } from "@/hooks/use-articles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Newspaper, ChevronRight } from "lucide-react";
+import { Newspaper, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,10 +10,10 @@ export function ArticleList() {
 
   // Mock data if backend is empty/loading for better preview
   const displayArticles = articles && articles.length > 0 ? articles : [
-    { id: 1, title: "Έναρξη νέας σχολικής χρονιάς - Αγιασμός", publishedAt: new Date().toISOString() },
-    { id: 2, title: "Εκδρομή της Γ' Γυμνασίου στην Αθήνα", publishedAt: new Date(Date.now() - 86400000 * 2).toISOString() },
-    { id: 3, title: "Συμμετοχή στον διαγωνισμό Ρομποτικής", publishedAt: new Date(Date.now() - 86400000 * 5).toISOString() },
-    { id: 4, title: "Ημερίδα επαγγελματικού προσανατολισμού", publishedAt: new Date(Date.now() - 86400000 * 10).toISOString() },
+    { id: 1, title: "Έναρξη νέας σχολικής χρονιάς - Αγιασμός", publishedAt: new Date().toISOString(), imageUrl: null },
+    { id: 2, title: "Εκδρομή της Γ' Γυμνασίου στην Αθήνα", publishedAt: new Date(Date.now() - 86400000 * 2).toISOString(), imageUrl: null },
+    { id: 3, title: "Συμμετοχή στον διαγωνισμό Ρομποτικής", publishedAt: new Date(Date.now() - 86400000 * 5).toISOString(), imageUrl: null },
+    { id: 4, title: "Ημερίδα επαγγελματικού προσανατολισμού", publishedAt: new Date(Date.now() - 86400000 * 10).toISOString(), imageUrl: null },
   ];
 
   return (
@@ -36,16 +36,23 @@ export function ArticleList() {
             {displayArticles.map((article: any) => (
               <li key={article.id} className="group relative transition-colors hover:bg-muted/50">
                 <a href={`/article/${article.id}`} className="block p-4">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="space-y-1">
-                      <h4 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                  <div className="flex items-center gap-3">
+                    {article.imageUrl ? (
+                      <img src={article.imageUrl} alt="" className="h-12 w-12 object-cover rounded-md shrink-0 border border-primary/10" />
+                    ) : (
+                      <div className="h-12 w-12 bg-primary/5 rounded-md flex items-center justify-center shrink-0 border border-primary/10">
+                        <ImageIcon className="h-6 w-6 text-primary/40" />
+                      </div>
+                    )}
+                    <div className="flex-grow space-y-1">
+                      <h4 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-sm">
                         {article.title}
                       </h4>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase font-bold tracking-wider">
                         {format(new Date(article.publishedAt), "dd MMMM yyyy", { locale: el })}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
                 </a>
               </li>
@@ -54,7 +61,7 @@ export function ArticleList() {
         )}
       </CardContent>
       <div className="p-4 border-t border-primary/10 bg-primary/5 text-center">
-        <a href="/articles" className="text-sm font-semibold text-primary hover:underline">
+        <a href="/announcements" className="text-sm font-semibold text-primary hover:underline">
           Προβολή όλων των άρθρων
         </a>
       </div>
