@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api, type ArticlesListResponse, type ArticleResponse } from "@shared/routes";
+import { api, type ArticlesListResponse, type ArticleResponse, type SiteSettingsResponse } from "@shared/routes";
 
 // GET /api/articles
 export function useArticles() {
@@ -8,8 +8,6 @@ export function useArticles() {
     queryFn: async () => {
       const res = await fetch(api.articles.list.path);
       if (!res.ok) throw new Error("Failed to fetch articles");
-      // In a real app we'd validate with api.articles.list.responses[200].parse(data)
-      // but for this demo ensuring it runs even if backend mock is simple
       return (await res.json()) as ArticlesListResponse;
     },
   });
@@ -27,5 +25,17 @@ export function useArticle(id: number) {
       return (await res.json()) as ArticleResponse;
     },
     enabled: !!id,
+  });
+}
+
+// GET /api/settings
+export function useSettings() {
+  return useQuery({
+    queryKey: [api.settings.get.path],
+    queryFn: async () => {
+      const res = await fetch(api.settings.get.path);
+      if (!res.ok) throw new Error("Failed to fetch settings");
+      return (await res.json()) as SiteSettingsResponse;
+    },
   });
 }

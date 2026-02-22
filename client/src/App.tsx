@@ -5,12 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      {/* For this demo, other routes will just 404 since requirements focused on Home layout */}
+      <Route path="/secret/edit" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

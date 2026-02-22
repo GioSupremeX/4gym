@@ -8,6 +8,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Articles
   app.get(api.articles.list.path, async (req, res) => {
     const allArticles = await storage.getArticles();
     res.json(allArticles);
@@ -19,6 +20,58 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Article not found" });
     }
     res.json(article);
+  });
+
+  app.post(api.articles.create.path, async (req, res) => {
+    try {
+      const input = api.articles.create.input.parse(req.body);
+      const article = await storage.createArticle(input);
+      res.status(201).json(article);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch(api.articles.update.path, async (req, res) => {
+    try {
+      const input = api.articles.update.input.parse(req.body);
+      const article = await storage.updateArticle(Number(req.params.id), input);
+      if (!article) return res.status(404).json({ message: "Article not found" });
+      res.json(article);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete(api.articles.delete.path, async (req, res) => {
+    const success = await storage.deleteArticle(Number(req.params.id));
+    if (!success) return res.status(404).json({ message: "Article not found" });
+    res.status(204).end();
+  });
+
+  // Settings
+  app.get(api.settings.get.path, async (req, res) => {
+    const settings = await storage.getSettings();
+    res.json(settings);
+  });
+
+  app.patch(api.settings.update.path, async (req, res) => {
+    try {
+      const input = api.settings.update.input.parse(req.body);
+      const settings = await storage.updateSettings(input);
+      res.json(settings);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // Seed the database
@@ -58,4 +111,7 @@ async function seedDatabase() {
     }
     console.log("Database seeded with sample articles.");
   }
+
+  // Ensure settings exist
+  await storage.getSettings();
 }
