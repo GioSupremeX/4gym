@@ -2,8 +2,10 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Users, Trophy, MessageSquare } from "lucide-react";
+import { useSettings } from "@/hooks/use-articles";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function GenericPage({ title, description, icon: Icon }: { title: string; description: string; icon: any }) {
+export function GenericPage({ title, description, icon: Icon }: { title: string; description: string; icon: any }) {
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
       <Navigation />
@@ -18,7 +20,7 @@ export default function GenericPage({ title, description, icon: Icon }: { title:
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 md:p-12 text-center">
-            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto whitespace-pre-wrap">
               {description}
             </p>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -39,21 +41,31 @@ export default function GenericPage({ title, description, icon: Icon }: { title:
 }
 
 export function AboutPage() {
-  return <GenericPage title="Το σχολείο μας" description="Το 4ο Γυμνάσιο Ρόδου - Καζούλλειο έχει μια μακρά ιστορία εκπαιδευτικής προσφοράς στην τοπική κοινωνία της Ρόδου." icon={BookOpen} />;
+  const { data: settings, isLoading } = useSettings();
+  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+  return <GenericPage title="Το σχολείο μας" description={settings?.aboutPageContent || ""} icon={BookOpen} />;
 }
 
 export function StudentsPage() {
-  return <GenericPage title="Μαθητές" description="Εδώ μπορείτε να βρείτε πληροφορίες για τις μαθητικές κοινότητες, το ωρολόγιο πρόγραμμα και άλλες χρήσιμες ανακοινώσεις για τους μαθητές μας." icon={Users} />;
+  const { data: settings, isLoading } = useSettings();
+  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+  return <GenericPage title="Μαθητές" description={settings?.studentsPageContent || ""} icon={Users} />;
 }
 
 export function ActivitiesPage() {
-  return <GenericPage title="Δραστηριότητες" description="Το σχολείο μας συμμετέχει σε πλήθος εκπαιδευτικών προγραμμάτων, αθλητικών δραστηριοτήτων και πολιτιστικών εκδηλώσεων." icon={Trophy} />;
+  const { data: settings, isLoading } = useSettings();
+  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+  return <GenericPage title="Δραστηριότητες" description={settings?.activitiesPageContent || ""} icon={Trophy} />;
 }
 
 export function AnnouncementsPage() {
-  return <GenericPage title="Ανακοινώσεις" description="Μείνετε ενημερωμένοι για όλες τις τελευταίες ανακοινώσεις, εγγραφές και εκδηλώσεις του σχολείου μας." icon={MessageSquare} />;
+  const { data: settings, isLoading } = useSettings();
+  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+  return <GenericPage title="Ανακοινώσεις" description={settings?.announcementsPageContent || ""} icon={MessageSquare} />;
 }
 
 export function ContactPage() {
-  return <GenericPage title="Επικοινωνία" description="Μπορείτε να επικοινωνήσετε μαζί μας τηλεφωνικά, μέσω email ή να μας επισκεφθείτε στον χώρο του σχολείου." icon={Users} />;
+  const { data: settings, isLoading } = useSettings();
+  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+  return <GenericPage title="Επικοινωνία" description={settings?.contactPageContent || ""} icon={Users} />;
 }
