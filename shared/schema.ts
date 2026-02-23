@@ -17,6 +17,13 @@ export const siteSettings = pgTable("site_settings", {
   aboutText: text("about_text").notNull().default("Το 4ο Γυμνάσιο Ρόδου – Καζούλλειο αποτελεί έναν χώρο μάθησης, δημιουργίας και συνεργασίας. Στόχος μας είναι η ολόπλευρη ανάπτυξη των μαθητών μας, μέσα από τη γνώση, τον σεβασμό και τη συμμετοχή στη σχολική ζωή."),
   logoUrl: text("logo_url"),
   heroImageUrl: text("hero_image_url"),
+  // Footer Links
+  footerLink1Label: text("footer_link_1_label").notNull().default("Υπουργείο Παιδείας"),
+  footerLink1Url: text("footer_link_1_url").notNull().default("https://www.minedu.gov.gr/"),
+  footerLink2Label: text("footer_link_2_label").notNull().default("Διεύθυνση Δευτεροβάθμιας"),
+  footerLink2Url: text("footer_link_2_url").notNull().default("#"),
+  footerLink3Label: text("footer_link_3_label").notNull().default("Περιφερειακή Διεύθυνση"),
+  footerLink3Url: text("footer_link_3_url").notNull().default("#"),
 });
 
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true });
