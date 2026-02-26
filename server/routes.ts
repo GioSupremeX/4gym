@@ -1,117 +1,69 @@
-import type { Express } from "express";
-import type { Server } from "http";
+import { Express, Request, Response, NextFunction } from "express";
+import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema } from "@shared/schema";
 import { api } from "@shared/routes";
-import { z } from "zod";
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(server: Server, app: Express): Promise<void> {
   // Articles
-  app.get(api.articles.list.path, async (req, res) => {
-    const allArticles = await storage.getArticles();
-    res.json(allArticles);
+  app.get(api.articles.list.path, async (_req: Request, res: Response) => {
+    const articlesList = await storage.getArticles();
+    res.json(articlesList);
   });
 
-  app.get(api.articles.get.path, async (req, res) => {
+  app.get(api.articles.get.path, async (req: Request, res: Response) => {
     const article = await storage.getArticle(Number(req.params.id));
-    if (!article) {
-      return res.status(404).json({ message: "Article not found" });
-    }
+    if (!article) return res.status(404).json({ message: "Article not found" });
     res.json(article);
   });
 
-  app.post(api.articles.create.path, async (req, res) => {
-    try {
-      const input = api.articles.create.input.parse(req.body);
-      const article = await storage.createArticle(input);
-      res.status(201).json(article);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
+  app.post(api.articles.create.path, async (req: Request, res: Response) => {
+    const parsed = insertArticleSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const article = await storage.createArticle(parsed.data);
+    res.json(article);
   });
 
-  app.patch(api.articles.update.path, async (req, res) => {
-    try {
-      const input = api.articles.update.input.parse(req.body);
-      const article = await storage.updateArticle(Number(req.params.id), input);
-      if (!article) return res.status(404).json({ message: "Article not found" });
-      res.json(article);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
+  app.patch(api.articles.update.path, async (req: Request, res: Response) => {
+    const parsed = insertArticleSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const article = await storage.updateArticle(Number(req.params.id), parsed.data);
+    res.json(article);
   });
 
-  app.delete(api.articles.delete.path, async (req, res) => {
-    const success = await storage.deleteArticle(Number(req.params.id));
-    if (!success) return res.status(404).json({ message: "Article not found" });
+  app.delete(api.articles.delete.path, async (req: Request, res: Response) => {
+    await storage.deleteArticle(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // Announcements
+  app.get("/api/announcements", async (_req: Request, res: Response) => {
+    const announcementsList = await storage.getAnnouncements();
+    res.json(announcementsList);
+  });
+
+  app.post("/api/announcements", async (req: Request, res: Response) => {
+    const parsed = insertAnnouncementSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const announcement = await storage.createAnnouncement(parsed.data);
+    res.json(announcement);
+  });
+
+  app.delete("/api/announcements/:id", async (req: Request, res: Response) => {
+    await storage.deleteAnnouncement(Number(req.params.id));
     res.status(204).end();
   });
 
   // Settings
-  app.get(api.settings.get.path, async (req, res) => {
+  app.get(api.settings.get.path, async (_req: Request, res: Response) => {
     const settings = await storage.getSettings();
     res.json(settings);
   });
 
-  app.patch(api.settings.update.path, async (req, res) => {
-    try {
-      const input = api.settings.update.input.parse(req.body);
-      const settings = await storage.updateSettings(input);
-      res.json(settings);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
+  app.patch(api.settings.update.path, async (req: Request, res: Response) => {
+    const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const settings = await storage.updateSettings(parsed.data);
+    res.json(settings);
   });
-
-  // Seed the database
-  seedDatabase().catch(console.error);
-
-  return httpServer;
-}
-
-async function seedDatabase() {
-  const existingArticles = await storage.getArticles();
-  if (existingArticles.length === 0) {
-    const seedData = [
-      {
-        title: "Η Υπαπαντή στο σχολείο μας: θρησκεία, πολιτισμός, διατροφή και γαλλικές γεύσεις",
-        content: "Λεπτομέρειες για τον εορτασμό της Υπαπαντής στο 4ο Γυμνάσιο Ρόδου...",
-      },
-      {
-        title: "Το 4ο Γυμνάσιο στην 1η Μαθητική συνάντηση για την Ελληνική Γλώσσα -Εορτασμός Παγκόσμιας Ημέρας Ελληνικής Γλώσσας",
-        content: "Οι μαθητές μας συμμετείχαν ενεργά...",
-      },
-      {
-        title: "Εορτασμός Παγκόσμιας ημέρας ελληνικής γλώσσας",
-        content: "Μια μέρα αφιερωμένη στην πλούσια γλώσσα μας...",
-      },
-      {
-        title: "Μαθαίνοντας με γρίφους",
-        content: "Ένα πρωτοποριακό πρόγραμμα εκμάθησης...",
-      },
-      {
-        title: "Επιτυχής υλοποίηση του Εργαστηρίου Επαγγελματικού Προσανατολισμού STEM «GO 4 MINT» στο 4ο Γυμνάσιο Ρόδου.",
-        content: "Μεγάλη επιτυχία σημείωσε το εργαστήριο...",
-      }
-    ];
-
-    for (const article of seedData) {
-      await storage.createArticle(article);
-    }
-    console.log("Database seeded with sample articles.");
-  }
-
-  // Ensure settings exist
-  await storage.getSettings();
 }

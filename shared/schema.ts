@@ -11,6 +11,13 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+});
+
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
   schoolName: text("school_name").notNull().default("4ο ΓΥΜΝΑΣΙΟ ΡΟΔΟΥ – ΚΑΖΟΥΛΛΕΙΟ"),
@@ -36,18 +43,16 @@ export const siteSettings = pgTable("site_settings", {
   magazineImageUrl: text("magazine_image_url").notNull().default("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80"),
   magazineButtonLabel: text("magazine_button_label").notNull().default("Διαβάστε το Τεύχος"),
   magazineButtonUrl: text("magazine_button_url").notNull().default("#"),
-  // Section above calendar
-  calendarSectionTitle: text("calendar_section_title").notNull().default("Γ ΤΑΞΗ"),
-  calendarSectionText: text("calendar_section_text").notNull().default("Ενημερώσεις για την Γ' Τάξη"),
 });
 
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true });
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, publishedAt: true });
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true });
 
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
 export type Article = typeof articles.$inferSelect;
-export type ArticleResponse = Article;
-export type ArticlesListResponse = Article[];
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;
 
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
