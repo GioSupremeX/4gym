@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: articles, isLoading: articlesLoading } = useArticles();
+  const [editingArticle, setEditingArticle] = useState<any>(null);
 
   const updateSettings = useMutation({
     mutationFn: async (values: any) => {
@@ -51,6 +52,23 @@ export default function AdminDashboard() {
     },
   });
 
+  const updateArticle = useMutation({
+    mutationFn: async ({ id, ...values }: any) => {
+      const res = await fetch(buildUrl(api.articles.update.path, { id }), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) throw new Error("Failed to update article");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      setEditingArticle(null);
+      toast({ title: "Επιτυχία", description: "Το άρθρο ενημερώθηκε." });
+    },
+  });
+
   const deleteArticle = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(buildUrl(api.articles.delete.path, { id }), {
@@ -78,7 +96,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold flex items-center gap-2 font-display text-primary">
             <Settings className="h-8 w-8" />
-            Διαχείριση Ιστοσελίδας
+            Control Room
           </h1>
           <Button variant="outline" asChild>
             <Link href="/">
@@ -88,9 +106,10 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Γενικές Ρυθμίσεις</TabsTrigger>
             <TabsTrigger value="pages">Περιεχόμενο Σελίδων</TabsTrigger>
+            <TabsTrigger value="magazine">Περιοδικό</TabsTrigger>
             <TabsTrigger value="articles">Άρθρα</TabsTrigger>
           </TabsList>
 
@@ -98,7 +117,7 @@ export default function AdminDashboard() {
             <Card className="border-2 border-primary/10 shadow-lg">
               <CardHeader className="bg-primary/5 border-b border-primary/10">
                 <CardTitle className="flex items-center gap-2 text-primary font-display">
-                  <Settings className="h-5 w-5" /> Γενικές Ρυθμίσεις
+                  <Settings className="h-5 w-5" /> Config Site
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -127,7 +146,7 @@ export default function AdminDashboard() {
                   
                   <Separator className="my-6" />
                   <h3 className="text-sm font-bold uppercase tracking-wider text-primary mb-4 flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" /> Σύνδεσμοι Footer
+                    <LinkIcon className="h-4 w-4" /> Footer Links
                   </h3>
                   
                   <div className="grid grid-cols-1 gap-4">
@@ -147,7 +166,7 @@ export default function AdminDashboard() {
 
                   <Button type="submit" className="w-full mt-6" disabled={updateSettings.isPending}>
                     {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Αποθήκευση Γενικών Ρυθμίσεων
+                    Αποθήκευση Config
                   </Button>
                 </form>
               </CardContent>
@@ -158,7 +177,7 @@ export default function AdminDashboard() {
             <Card className="border-2 border-primary/10 shadow-lg">
               <CardHeader className="bg-primary/5 border-b border-primary/10">
                 <CardTitle className="flex items-center gap-2 text-primary font-display">
-                  <FileText className="h-5 w-5" /> Περιεχόμενο Σελίδων
+                  <FileText className="h-5 w-5" /> Edit Pages
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -195,7 +214,55 @@ export default function AdminDashboard() {
 
                   <Button type="submit" className="w-full" disabled={updateSettings.isPending}>
                     {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Αποθήκευση Περιεχομένου Σελίδων
+                    Save Content
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="magazine">
+            <Card className="border-2 border-primary/10 shadow-lg">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <BookOpen className="h-5 w-5" /> Edit Περιοδικό Section
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    updateSettings.mutate(Object.fromEntries(formData));
+                  }}
+                >
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Τίτλος</label>
+                    <Input name="magazineTitle" defaultValue={settings?.magazineTitle} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Εικόνας Περιοδικού</label>
+                    <Input name="magazineImageUrl" defaultValue={settings?.magazineImageUrl} placeholder="https://..." />
+                    {settings?.magazineImageUrl && (
+                      <div className="mt-2 relative aspect-video w-48 overflow-hidden rounded-lg border">
+                        <img src={settings.magazineImageUrl} className="object-cover w-full h-full" alt="Magazine Preview" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Label Κουμπιού</label>
+                      <Input name="magazineButtonLabel" defaultValue={settings?.magazineButtonLabel} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Link Κουμπιού</label>
+                      <Input name="magazineButtonUrl" defaultValue={settings?.magazineButtonUrl} placeholder="https://..." />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full mt-6" disabled={updateSettings.isPending}>
+                    {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Magazine Info
                   </Button>
                 </form>
               </CardContent>
@@ -206,15 +273,15 @@ export default function AdminDashboard() {
             <Card className="border-2 border-primary/10 shadow-lg">
               <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-primary font-display">
-                  <Newspaper className="h-5 w-5" /> Διαχείριση Άρθρων
+                  <Newspaper className="h-5 w-5" /> CRUD Articles
                 </CardTitle>
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button size="sm" className="shadow-md">
-                      <Plus className="h-4 w-4 mr-1" /> Νέο Άρθρο
+                      <Plus className="h-4 w-4 mr-1" /> Create New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="font-body">
+                  <DialogContent className="font-body max-w-2xl">
                     <DialogHeader>
                       <DialogTitle className="font-display text-primary">Δημιουργία Άρθρου</DialogTitle>
                     </DialogHeader>
@@ -236,7 +303,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold uppercase tracking-wider">Περιεχόμενο</label>
-                        <Textarea name="content" required rows={6} />
+                        <Textarea name="content" required rows={10} />
                       </div>
                       <Button type="submit" className="w-full" disabled={createArticle.isPending}>
                         Δημοσίευση Άρθρου
@@ -265,6 +332,42 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Dialog open={editingArticle?.id === article.id} onOpenChange={(open) => !open && setEditingArticle(null)}>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 rounded-full" onClick={() => setEditingArticle(article)}>
+                              <Edit2 className="h-5 w-5" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="font-body max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
+                            </DialogHeader>
+                            <form
+                              className="space-y-4"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                updateArticle.mutate({ id: article.id, ...Object.fromEntries(formData) });
+                              }}
+                            >
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider">Τίτλος</label>
+                                <Input name="title" defaultValue={article.title} required />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider">URL Εικόνας</label>
+                                <Input name="imageUrl" defaultValue={article.imageUrl || ""} placeholder="https://..." />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider">Περιεχόμενο</label>
+                                <Textarea name="content" defaultValue={article.content} required rows={10} />
+                              </div>
+                              <Button type="submit" className="w-full" disabled={updateArticle.isPending}>
+                                Ενημέρωση Άρθρου
+                              </Button>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
                         <Button
                           variant="ghost"
                           size="icon"
