@@ -6,6 +6,7 @@ import { CalendarSection } from "@/components/CalendarSection";
 import { Separator } from "@/components/ui/separator";
 import { useSettings } from "@/hooks/use-articles";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const { data: settings, isLoading } = useSettings();
@@ -70,6 +71,20 @@ export default function Home() {
             </div>
 
           </div>
+        </section>
+
+        <section className="container mx-auto px-4 py-8 mb-12">
+          <Card className="bg-primary/5 border-2 border-primary/10 shadow-lg overflow-hidden">
+            <CardContent className="p-8 text-center space-y-4">
+              <h2 className="text-3xl font-display font-bold text-primary uppercase tracking-tight">
+                {settings?.calendarSectionTitle || "Γ ΤΑΞΗ"}
+              </h2>
+              <Separator className="mx-auto w-16 bg-primary/20 h-1" />
+              <p className="text-lg text-muted-foreground whitespace-pre-wrap max-w-3xl mx-auto">
+                {settings?.calendarSectionText || "Ενημερώσεις για την Γ' Τάξη"}
+              </p>
+            </CardContent>
+          </Card>
         </section>
 
         <CalendarSection />
