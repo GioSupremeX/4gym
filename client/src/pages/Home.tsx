@@ -34,12 +34,7 @@ export default function Home() {
       <main className="flex-grow">
         <section className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <div className="lg:col-span-3">
-              <MagazineCard />
-            </div>
-
-            <div className="lg:col-span-6 space-y-8">
+            <div className="lg:col-span-8 space-y-8">
               <div className="text-center space-y-4">
                 <h1 className="text-3xl sm:text-4xl font-display font-bold text-primary tracking-tight leading-tight">
                   {aboutTitle}
@@ -65,10 +60,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-4">
               <ArticleList />
             </div>
-
           </div>
         </section>
 
