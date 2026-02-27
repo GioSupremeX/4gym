@@ -38,6 +38,13 @@ export const siteSettings = pgTable("site_settings", {
   activitiesPageContent: text("activities_page_content").notNull().default("Το σχολείο μας συμμετέχει σε πλήθος εκπαιδευτικών προγραμμάτων, αθλητικών δραστηριοτήτων και πολιτιστικών εκδηλώσεων."),
   announcementsPageContent: text("announcements_page_content").notNull().default("Μείνετε ενημερωμένοι για όλες τις τελευταίες ανακοινώσεις, εγγραφές και εκδηλώσεις του σχολείου μας."),
   contactPageContent: text("contact_page_content").notNull().default("Μπορείτε να επικοινωνήσετε μαζί μας τηλεφωνικά, μέσω email ή να μας επισκεφθείτε στον χώρο του σχολείου."),
+  // Footer Links
+  footerLink1Label: text("footer_link_1_label").notNull().default("Υπουργείο Παιδείας"),
+  footerLink1Url: text("footer_link_1_url").notNull().default("https://www.minedu.gov.gr/"),
+  footerLink2Label: text("footer_link_2_label").notNull().default("Διεύθυνση Δευτεροβάθμιας"),
+  footerLink2Url: text("footer_link_2_url").notNull().default("#"),
+  footerLink3Label: text("footer_link_3_label").notNull().default("Περιφερειακή Διεύθυνση"),
+  footerLink3Url: text("footer_link_3_url").notNull().default("#"),
   // Magazine Section
   magazineTitle: text("magazine_title").notNull().default("Το Περιοδικό Μας"),
   magazineImageUrl: text("magazine_image_url").notNull().default("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80"),

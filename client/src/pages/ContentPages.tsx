@@ -42,7 +42,7 @@ export function AboutPage() {
 export function StudentsPage() {
   const { data: settings, isLoading } = useSettings();
   if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
-  return <GenericPage title="Μαθητές" description={settings?.studentsPageContent || ""} icon={Users} />;
+  return <GenericPage title="Μαθητές" description={settings?.studentsPageContent || "Εδώ μπορείτε να βρείτε πληροφορίες για τις μαθητικές κοινότητες, το ωρολόγιο πρόγραμμα και άλλες χρήσιμες ανακοινώσεις για τους μαθητές μας."} icon={Users} />;
 }
 
 export function ActivitiesPage() {

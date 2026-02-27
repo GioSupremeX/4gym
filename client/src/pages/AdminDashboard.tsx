@@ -333,6 +333,56 @@ export default function AdminDashboard() {
                 </form>
               </CardContent>
             </Card>
+
+            <Card className="border-2 border-primary/10 shadow-lg mt-8">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <LinkIcon className="h-5 w-5" /> Edit Footer Links
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form
+                  className="space-y-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    updateSettings.mutate(Object.fromEntries(formData));
+                  }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 1 Label</label>
+                      <Input name="footerLink1Label" defaultValue={settings?.footerLink1Label} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 1 URL</label>
+                      <Input name="footerLink1Url" defaultValue={settings?.footerLink1Url} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 2 Label</label>
+                      <Input name="footerLink2Label" defaultValue={settings?.footerLink2Label} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 2 URL</label>
+                      <Input name="footerLink2Url" defaultValue={settings?.footerLink2Url} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 3 Label</label>
+                      <Input name="footerLink3Label" defaultValue={settings?.footerLink3Label} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Link 3 URL</label>
+                      <Input name="footerLink3Url" defaultValue={settings?.footerLink3Url} />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={updateSettings.isPending}>Save Footer Links</Button>
+                </form>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="articles">
@@ -380,7 +430,50 @@ export default function AdminDashboard() {
                         {a.imageUrls?.[0] ? <img src={a.imageUrls[0]} className="w-12 h-12 rounded object-cover" /> : <div className="w-12 h-12 bg-muted rounded flex items-center justify-center"><ImageIcon/></div>}
                         <h4 className="font-bold">{a.title}</h4>
                       </div>
-                      <Button variant="ghost" className="text-destructive" onClick={() => deleteArticle.mutate(a.id)}><Trash2/></Button>
+                      <div className="flex gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => {
+                              setEditingArticle(a);
+                              setEditArticleImages(a.imageUrls || []);
+                            }}>
+                              <Edit2 className="h-5 w-5" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              updateArticle.mutate({ id: a.id, ...Object.fromEntries(formData), imageUrls: editArticleImages });
+                            }} className="space-y-4">
+                              <Input name="title" defaultValue={a.title} placeholder="Τίτλος" required />
+                              <div className="p-4 border rounded-xl bg-muted/20">
+                                <div className="grid grid-cols-4 gap-2 mb-4">
+                                  {editArticleImages.map((img, i) => (
+                                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
+                                      <img src={img} className="object-cover w-full h-full" />
+                                      <button type="button" onClick={() => setEditArticleImages(p => p.filter((_, idx) => idx !== i))} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center text-white"><X/></button>
+                                    </div>
+                                  ))}
+                                  <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground"><Upload/><span className="text-[10px]">Import</span></button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input id={`link-edit-${a.id}`} placeholder="URL Εικόνας" />
+                                  <Button type="button" onClick={() => { const i = document.getElementById(`link-edit-${a.id}`) as HTMLInputElement; if(i.value){setEditArticleImages(p=>[...p, i.value]); i.value='';} }}>Add</Button>
+                                </div>
+                              </div>
+                              <Textarea name="content" defaultValue={a.content} placeholder="Περιεχόμενο" rows={8} required />
+                              <Button type="submit" className="w-full" disabled={updateArticle.isPending}>Ενημέρωση</Button>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteArticle.mutate(a.id)}>
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
