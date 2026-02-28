@@ -5,6 +5,7 @@ import { BookOpen, Users, Trophy, MessageSquare, Bell } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
 import { Announcement } from "@shared/schema";
+import { Separator } from "@/components/ui/separator";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
