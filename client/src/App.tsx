@@ -6,13 +6,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import AdminDashboard from "@/pages/AdminDashboard";
-import { AboutPage, StudentsPage, ActivitiesPage, AnnouncementsPage, ContactPage } from "@/pages/ContentPages";
+import { AboutPage, StudentsPage, ActivitiesPage, AnnouncementsPage, ContactPage, CategoryPage } from "@/pages/ContentPages";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/about" component={AboutPage} />
+      <Route path="/about/teachers" component={() => <CategoryPage category="teachers" title="Εκπαιδευτικό Προσωπικό" />} />
+      <Route path="/about/heads" component={() => <CategoryPage category="heads" title="Υπεύθυνοι Τμημάτων" />} />
+      <Route path="/about/schedule" component={() => <CategoryPage category="schedule" title="Ωράριο" />} />
+      <Route path="/about/rules" component={() => <CategoryPage category="rules" title="Κανονισμός" />} />
+      <Route path="/about/evaluation" component={() => <CategoryPage category="evaluation" title="Εσωτερική Αυτοαξιολόγηση" />} />
       <Route path="/students" component={StudentsPage} />
       <Route path="/activities" component={ActivitiesPage} />
       <Route path="/announcements" component={AnnouncementsPage} />

@@ -8,6 +8,7 @@ export const articles = pgTable("articles", {
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   imageUrls: text("image_urls").array().default([]),
+  category: text("category").notNull().default("general"), // 'general', 'teachers', 'operation', 'evaluation'
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
@@ -21,6 +22,7 @@ export const announcements = pgTable("announcements", {
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
   schoolName: text("school_name").notNull().default("4ο ΓΥΜΝΑΣΙΟ ΡΟΔΟΥ – ΚΑΖΟΥΛΛΕΙΟ"),
+  adminCode: text("admin_code").notNull().default("1234"),
   aboutTitle: text("about_title").notNull().default("Καλώς Ήρθατε Στο 4ο Γυμνάσιο Ρόδου - Καζούλλειο"),
   aboutText: text("about_text").notNull().default("Το 4ο Γυμνάσιο Ρόδου – Καζούλλειο αποτελεί έναν χώρο μάθησης, δημιουργίας και συνεργασίας. Στόχος μας είναι η ολόπλευρη ανάπτυξη των μαθητών μας, μέσα από τη γνώση, τον σεβασμό και τη συμμετοχή στη σχολική ζωή."),
   logoUrl: text("logo_url"),

@@ -66,4 +66,11 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     const settings = await storage.updateSettings(parsed.data);
     res.json(settings);
   });
+
+  // Category Articles
+  app.get("/api/articles/category/:category", async (req: Request, res: Response) => {
+    const articlesList = await storage.getArticles();
+    const filtered = articlesList.filter(a => a.category === req.params.category);
+    res.json(filtered);
+  });
 }

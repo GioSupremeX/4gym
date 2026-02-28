@@ -1,10 +1,10 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Users, Trophy, MessageSquare, Bell } from "lucide-react";
+import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
-import { Announcement } from "@shared/schema";
+import { Announcement, Article } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
@@ -22,15 +22,59 @@ export function GenericPage({ title, description, icon: Icon, children }: { titl
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 md:p-12">
-            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto text-center whitespace-pre-wrap mb-12">
-              {description}
-            </p>
+            {description && (
+              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto text-center whitespace-pre-wrap mb-12">
+                {description}
+              </p>
+            )}
             {children}
           </CardContent>
         </Card>
       </main>
       <Footer />
     </div>
+  );
+}
+
+export function CategoryPage({ category, title }: { category: string, title: string }) {
+  const { data: articles, isLoading } = useQuery<Article[]>({
+    queryKey: [`/api/articles/category/${category}`],
+  });
+
+  if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
+
+  return (
+    <GenericPage title={title} description="" icon={FileText}>
+      <div className="space-y-8 max-w-3xl mx-auto">
+        {articles?.map((art) => (
+          <Card key={art.id} className="relative overflow-hidden border-2 border-primary/10 hover:border-primary/30 shadow-md hover:shadow-xl transition-all duration-300 group rounded-2xl">
+            <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
+            <CardHeader className="pb-4">
+              <CardTitle className="text-3xl text-primary font-display font-bold leading-tight group-hover:translate-x-1 transition-transform">{art.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Separator className="mb-6 opacity-50" />
+              {art.imageUrls && art.imageUrls.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  {art.imageUrls.map((url, i) => (
+                    <img key={i} src={url} alt="" className="rounded-xl object-cover aspect-video shadow-md" />
+                  ))}
+                </div>
+              )}
+              <p className="text-lg text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {art.content}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+        {(!articles || articles.length === 0) && (
+          <div className="text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed border-primary/10">
+            <FileText className="h-16 w-16 text-muted-foreground/20 mx-auto mb-6" />
+            <p className="text-2xl font-display text-muted-foreground italic">Δεν υπάρχει περιεχόμενο ακόμα.</p>
+          </div>
+        )}
+      </div>
+    </GenericPage>
   );
 }
 

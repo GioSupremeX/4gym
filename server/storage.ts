@@ -31,7 +31,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
-    const [article] = await db.insert(articles).values(insertArticle).returning();
+    const [article] = await db.insert(articles).values({
+      ...insertArticle,
+      category: insertArticle.category || "general"
+    }).returning();
     return article;
   }
 
