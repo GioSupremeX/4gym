@@ -21,10 +21,129 @@ export default function AdminDashboard() {
   const [passcode, setPasscode] = useState("");
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: articles, isLoading: articlesLoading } = useArticles();
+  const { data: announcements, isLoading: annLoading } = useQuery<Announcement[]>({
+    queryKey: ["/api/announcements"],
+  });
   
-  // ... existing mutations ...
+  const [editingArticle, setEditingArticle] = useState<any>(null);
+  const [newArticleImages, setNewArticleImages] = useState<string[]>([]);
+  const [editArticleImages, setEditArticleImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (settingsLoading) return <Loader2 className="animate-spin" />;
+  const updateSettings = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await fetch(api.settings.update.path, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) throw new Error("Failed to update settings");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.settings.get.path] });
+      toast({ title: "Επιτυχία", description: "Οι ρυθμίσεις ενημερώθηκαν." });
+    },
+  });
+
+  const createArticle = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await fetch(api.articles.create.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) throw new Error("Failed to create article");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      setNewArticleImages([]);
+      toast({ title: "Επιτυχία", description: "Το άρθρο δημοσιεύτηκε." });
+    },
+  });
+
+  const updateArticle = useMutation({
+    mutationFn: async ({ id, ...values }: any) => {
+      const res = await fetch(buildUrl(api.articles.update.path, { id }), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) throw new Error("Failed to update article");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      setEditingArticle(null);
+      setEditArticleImages([]);
+      toast({ title: "Επιτυχία", description: "Το άρθρο ενημερώθηκε." });
+    },
+  });
+
+  const deleteArticle = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(buildUrl(api.articles.delete.path, { id }), {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete article");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.articles.list.path] });
+      toast({ title: "Επιτυχία", description: "Το άρθρο διαγράφηκε." });
+    },
+  });
+
+  const createAnnouncement = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await fetch("/api/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) throw new Error("Failed to create announcement");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      toast({ title: "Επιτυχία", description: "Η ανακοίνωση δημοσιεύτηκε." });
+    },
+  });
+
+  const deleteAnnouncement = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/announcements/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete announcement");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      toast({ title: "Επιτυχία", description: "Η ανακοίνωση διαγράφηκε." });
+    },
+  });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
+    const files = event.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        if (isEdit) setEditArticleImages(prev => [...prev, base64String]);
+        else setNewArticleImages(prev => [...prev, base64String]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  if (settingsLoading || articlesLoading || annLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -64,7 +183,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    // ... existing return ...
+    <div className="min-h-screen bg-muted/30 p-4 sm:p-8 font-body">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold flex items-center gap-2 font-display text-primary">
@@ -144,7 +263,6 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* ... Other tabs remain mostly same, just ensuring they use updated settings/schema ... */}
           <TabsContent value="general">
             <Card className="border-2 border-primary/10 shadow-lg">
               <CardHeader className="bg-primary/5 border-b border-primary/10">
@@ -397,23 +515,23 @@ export default function AdminDashboard() {
                                   ))}
                                   <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground"><Upload/><span className="text-[10px]">Import</span></button>
                                 </div>
-                            <div className="flex gap-2">
-                              <Input id={`link-edit-${a.id}`} placeholder="URL Εικόνας" />
-                              <Button type="button" onClick={() => { const i = document.getElementById(`link-edit-${a.id}`) as HTMLInputElement; if(i.value){setEditArticleImages(p=>[...p, i.value]); i.value='';} }}>Add</Button>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κατηγορία</label>
-                            <select name="category" defaultValue={a.category || "general"} className="w-full p-2 border rounded-md bg-background text-foreground">
-                              <option value="general">Γενικά</option>
-                              <option value="teachers">Εκπαιδευτικό Προσωπικό</option>
-                              <option value="heads">Υπεύθυνοι Τμημάτων</option>
-                              <option value="schedule">Ωράριο</option>
-                              <option value="rules">Κανονισμός</option>
-                              <option value="evaluation">Αυτοαξιολόγηση</option>
-                            </select>
-                          </div>
-                          <Textarea name="content" defaultValue={a.content} placeholder="Περιεχόμενο" rows={8} required />
+                                <div className="flex gap-2">
+                                  <Input id={`link-edit-${a.id}`} placeholder="URL Εικόνας" />
+                                  <Button type="button" onClick={() => { const i = document.getElementById(`link-edit-${a.id}`) as HTMLInputElement; if(i.value){setEditArticleImages(p=>[...p, i.value]); i.value='';} }}>Add</Button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κατηγορία</label>
+                                <select name="category" defaultValue={a.category || "general"} className="w-full p-2 border rounded-md bg-background text-foreground">
+                                  <option value="general">Γενικά</option>
+                                  <option value="teachers">Εκπαιδευτικό Προσωπικό</option>
+                                  <option value="heads">Υπεύθυνοι Τμημάτων</option>
+                                  <option value="schedule">Ωράριο</option>
+                                  <option value="rules">Κανονισμός</option>
+                                  <option value="evaluation">Αυτοαξιολόγηση</option>
+                                </select>
+                              </div>
+                              <Textarea name="content" defaultValue={a.content} placeholder="Περιεχόμενο" rows={8} required />
                               <Button type="submit" className="w-full" disabled={updateArticle.isPending}>Ενημέρωση</Button>
                             </form>
                           </DialogContent>
