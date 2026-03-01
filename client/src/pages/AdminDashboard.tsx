@@ -198,12 +198,12 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="general">Γενικές</TabsTrigger>
-            <TabsTrigger value="pages">Σελίδες</TabsTrigger>
-            <TabsTrigger value="announcements">Ανακοινώσεις</TabsTrigger>
-            <TabsTrigger value="magazine">Περιοδικό</TabsTrigger>
-            <TabsTrigger value="articles">Άρθρα</TabsTrigger>
+          <TabsList className="flex flex-wrap h-auto bg-muted p-1 gap-1">
+            <TabsTrigger value="general" className="flex-1 min-w-[100px]">Γενικές</TabsTrigger>
+            <TabsTrigger value="pages" className="flex-1 min-w-[100px]">Σελίδες</TabsTrigger>
+            <TabsTrigger value="announcements" className="flex-1 min-w-[100px]">Ανακοινώσεις</TabsTrigger>
+            <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>
+            <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
           </TabsList>
 
           <TabsContent value="announcements">

@@ -129,8 +129,8 @@ export function Navigation() {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80">
-              <div className="flex flex-col gap-4 mt-8">
+            <SheetContent side="right" className="w-80 overflow-y-auto">
+              <div className="flex flex-col gap-4 mt-8 pb-8">
                 {NAV_ITEMS.map((item) => (
                   <div key={item.label}>
                     {item.submenu ? (
