@@ -1,11 +1,13 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText } from "lucide-react";
+import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
 import { Announcement, Article } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
@@ -75,6 +77,62 @@ export function CategoryPage({ category, title }: { category: string, title: str
         )}
       </div>
     </GenericPage>
+  );
+}
+
+export function ArticlePage({ params }: { params: { id: string } }) {
+  const { data: article, isLoading } = useQuery<Article>({
+    queryKey: [`/api/articles/${params.id}`],
+  });
+
+  if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
+  if (!article) return <div className="p-20 text-center font-display text-destructive">Το άρθρο δεν βρέθηκε.</div>;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background font-body">
+      <Navigation />
+      <main className="flex-grow container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+          <Button variant="ghost" asChild className="mb-8 hover:text-primary transition-colors">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή στην Αρχική
+            </Link>
+          </Button>
+
+          <Card className="shadow-2xl border-2 border-primary/10 rounded-3xl overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 p-8 md:p-12">
+              <div className="flex items-center gap-3 text-primary mb-4 font-bold uppercase tracking-widest text-sm">
+                <FileText className="h-5 w-5" />
+                <span>{article.category === "general" ? "Νέα & Ανακοινώσεις" : article.category}</span>
+              </div>
+              <CardTitle className="text-4xl md:text-5xl font-display font-bold text-primary leading-tight">
+                {article.title}
+              </CardTitle>
+              <div className="mt-6 flex items-center text-muted-foreground font-medium">
+                {new Date(article.publishedAt).toLocaleDateString("el-GR", { day: '2-digit', month: 'long', year: 'numeric' })}
+              </div>
+            </CardHeader>
+            <CardContent className="p-8 md:p-12">
+              {article.imageUrls && article.imageUrls.length > 0 && (
+                <div className="grid grid-cols-1 gap-8 mb-12">
+                  {article.imageUrls.map((url, i) => (
+                    <div key={i} className="rounded-2xl overflow-hidden shadow-lg border-4 border-white">
+                      <img src={url} alt="" className="w-full h-auto object-cover max-h-[600px]" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="prose prose-lg dark:prose-invert max-w-none">
+                <p className="text-xl text-foreground leading-relaxed whitespace-pre-wrap">
+                  {article.content}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+      <Footer />
+    </div>
   );
 }
 

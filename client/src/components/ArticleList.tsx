@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { useArticles } from "@/hooks/use-articles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Newspaper, ChevronRight, Image as ImageIcon } from "lucide-react";
@@ -35,7 +36,7 @@ export function ArticleList() {
           <ul className="divide-y divide-border">
             {displayArticles.map((article: any) => (
               <li key={article.id} className="group relative transition-colors hover:bg-muted/50">
-                <a href={`/article/${article.id}`} className="block p-4">
+                <Link href={article.category === 'announcement' ? '/announcements' : `/articles/${article.id}`} className="block p-4">
                   <div className="flex items-center gap-3">
                     {article.imageUrl ? (
                       <img src={article.imageUrl} alt="" className="h-12 w-12 object-cover rounded-md shrink-0 border border-primary/10" />
@@ -54,7 +55,7 @@ export function ArticleList() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
