@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft } from "lucide-react";
+import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft, Newspaper } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
 import { Announcement, Article } from "@shared/schema";
