@@ -9,13 +9,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function ArticleList() {
   const { data: articles, isLoading } = useArticles();
 
-  // Mock data if backend is empty/loading for better preview
-  const displayArticles = articles && articles.length > 0 ? articles : [
-    { id: 1, title: "Έναρξη νέας σχολικής χρονιάς - Αγιασμός", publishedAt: new Date().toISOString(), imageUrl: null },
-    { id: 2, title: "Εκδρομή της Γ' Γυμνασίου στην Αθήνα", publishedAt: new Date(Date.now() - 86400000 * 2).toISOString(), imageUrl: null },
-    { id: 3, title: "Συμμετοχή στον διαγωνισμό Ρομποτικής", publishedAt: new Date(Date.now() - 86400000 * 5).toISOString(), imageUrl: null },
-    { id: 4, title: "Ημερίδα επαγγελματικού προσανατολισμού", publishedAt: new Date(Date.now() - 86400000 * 10).toISOString(), imageUrl: null },
-  ];
+  if (isLoading && !articles) {
+    return (
+      <Card className="h-full border-2 border-primary/10 shadow-lg flex flex-col">
+        <CardHeader className="bg-primary/5 pb-4 border-b border-primary/10">
+          <CardTitle className="flex items-center gap-2 text-xl text-primary font-display">
+            <Newspaper className="h-5 w-5" />
+            Τελευταία άρθρα...
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const generalArticles = articles?.filter(a => a.category === "general").slice(0, 5) || [];
 
   return (
     <Card className="h-full border-2 border-primary/10 shadow-lg flex flex-col">
@@ -26,45 +38,42 @@ export function ArticleList() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0 flex-grow">
-        {isLoading && !articles ? (
-          <div className="p-4 space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {displayArticles.map((article: any) => (
-              <li key={article.id} className="group relative transition-colors hover:bg-muted/50">
-                <Link href={article.category === 'announcement' ? '/announcements' : `/articles/${article.id}`} className="block p-4">
-                  <div className="flex items-center gap-3">
-                    {article.imageUrl ? (
-                      <img src={article.imageUrl} alt="" className="h-12 w-12 object-cover rounded-md shrink-0 border border-primary/10" />
-                    ) : (
-                      <div className="h-12 w-12 bg-primary/5 rounded-md flex items-center justify-center shrink-0 border border-primary/10">
-                        <ImageIcon className="h-6 w-6 text-primary/40" />
-                      </div>
-                    )}
-                    <div className="flex-grow space-y-1">
-                      <h4 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-sm">
-                        {article.title}
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase font-bold tracking-wider">
-                        {format(new Date(article.publishedAt), "dd MMMM yyyy", { locale: el })}
-                      </p>
+        <ul className="divide-y divide-border">
+          {generalArticles.map((article: any) => (
+            <li key={article.id} className="group relative transition-colors hover:bg-muted/50">
+              <Link href={`/articles/${article.id}`} className="block p-4">
+                <div className="flex items-center gap-3">
+                  {article.imageUrls?.[0] ? (
+                    <img src={article.imageUrls[0]} alt="" className="h-12 w-12 object-cover rounded-md shrink-0 border border-primary/10" />
+                  ) : (
+                    <div className="h-12 w-12 bg-primary/5 rounded-md flex items-center justify-center shrink-0 border border-primary/10">
+                      <ImageIcon className="h-6 w-6 text-primary/40" />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  )}
+                  <div className="flex-grow space-y-1">
+                    <h4 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-sm">
+                      {article.title}
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase font-bold tracking-wider">
+                      {format(new Date(article.publishedAt), "PPP", { locale: el })}
+                    </p>
                   </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </Link>
+            </li>
+          ))}
+          {generalArticles.length === 0 && (
+            <li className="p-8 text-center text-muted-foreground italic text-sm">
+              Δεν υπάρχουν νέα ακόμα.
+            </li>
+          )}
+        </ul>
       </CardContent>
       <div className="p-4 border-t border-primary/10 bg-primary/5 text-center">
-        <a href="/announcements" className="text-sm font-semibold text-primary hover:underline">
+        <Link href="/articles" className="text-sm font-semibold text-primary hover:underline">
           Προβολή όλων των άρθρων
-        </a>
+        </Link>
       </div>
     </Card>
   );

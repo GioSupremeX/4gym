@@ -84,9 +84,14 @@ export function ArticlePage({ params }: { params: { id: string } }) {
   const { data: article, isLoading } = useQuery<Article>({
     queryKey: [`/api/articles/${params.id}`],
   });
+  const { data: allArticles } = useQuery<Article[]>({
+    queryKey: ["/api/articles"],
+  });
 
   if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
   if (!article) return <div className="p-20 text-center font-display text-destructive">Το άρθρο δεν βρέθηκε.</div>;
+
+  const recommendations = allArticles?.filter(a => a.id !== article.id).slice(0, 3) || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
@@ -94,12 +99,12 @@ export function ArticlePage({ params }: { params: { id: string } }) {
       <main className="flex-grow container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <Button variant="ghost" asChild className="mb-8 hover:text-primary transition-colors">
-            <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή στην Αρχική
+            <Link href={article.category === "general" ? "/articles" : "/"}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή
             </Link>
           </Button>
 
-          <Card className="shadow-2xl border-2 border-primary/10 rounded-3xl overflow-hidden">
+          <Card className="shadow-2xl border-2 border-primary/10 rounded-3xl overflow-hidden mb-12">
             <CardHeader className="bg-primary/5 border-b border-primary/10 p-8 md:p-12">
               <div className="flex items-center gap-3 text-primary mb-4 font-bold uppercase tracking-widest text-sm">
                 <FileText className="h-5 w-5" />
@@ -129,10 +134,74 @@ export function ArticlePage({ params }: { params: { id: string } }) {
               </div>
             </CardContent>
           </Card>
+
+          {recommendations.length > 0 && (
+            <div className="space-y-6">
+              <h3 className="text-2xl font-display font-bold text-primary">Διαβάστε επίσης</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {recommendations.map((rec) => (
+                  <Link key={rec.id} href={`/articles/${rec.id}`}>
+                    <Card className="cursor-pointer hover:shadow-xl transition-all h-full border-2 border-primary/5 hover:border-primary/20">
+                      <CardContent className="p-4 space-y-3">
+                        {rec.imageUrls?.[0] && (
+                          <img src={rec.imageUrls[0]} alt="" className="w-full aspect-video object-cover rounded-lg" />
+                        )}
+                        <h4 className="font-bold line-clamp-2 leading-tight">{rec.title}</h4>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                          {new Date(rec.publishedAt).toLocaleDateString("el-GR")}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
       <Footer />
     </div>
+  );
+}
+
+export function AllArticlesPage() {
+  const { data: articles, isLoading } = useQuery<Article[]>({
+    queryKey: ["/api/articles"],
+  });
+
+  if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
+
+  const generalArticles = articles?.filter(a => a.category === "general") || [];
+
+  return (
+    <GenericPage title="Όλα τα Νέα" description="Δείτε όλα τα πρόσφατα νέα και ανακοινώσεις του σχολείου μας." icon={Newspaper}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        {generalArticles.map((art) => (
+          <Link key={art.id} href={`/articles/${art.id}`}>
+            <Card className="cursor-pointer hover:shadow-2xl transition-all border-2 border-primary/5 hover:border-primary/20 rounded-3xl overflow-hidden h-full flex flex-col group">
+              {art.imageUrls?.[0] && (
+                <div className="aspect-video overflow-hidden">
+                  <img src={art.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                </div>
+              )}
+              <CardHeader className="flex-grow">
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                  {new Date(art.publishedAt).toLocaleDateString("el-GR")}
+                </div>
+                <CardTitle className="text-2xl font-display font-bold text-primary leading-tight group-hover:text-primary transition-colors">
+                  {art.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground line-clamp-3 leading-relaxed">
+                  {art.content}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </GenericPage>
   );
 }
 
