@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -201,10 +201,72 @@ export default function AdminDashboard() {
           <TabsList className="flex flex-wrap h-auto bg-muted p-1 gap-1">
             <TabsTrigger value="general" className="flex-1 min-w-[100px]">Γενικές</TabsTrigger>
             <TabsTrigger value="pages" className="flex-1 min-w-[100px]">Σελίδες</TabsTrigger>
+            <TabsTrigger value="stats" className="flex-1 min-w-[100px]">Στατιστικά</TabsTrigger>
             <TabsTrigger value="announcements" className="flex-1 min-w-[100px]">Ανακοινώσεις</TabsTrigger>
             <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>
             <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="stats">
+            <Card className="border-2 border-primary/10 shadow-lg">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <Trophy className="h-5 w-5" /> Edit Στατιστικά Σχολείου
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form
+                  className="space-y-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    updateSettings.mutate(Object.fromEntries(formData));
+                  }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4 border p-4 rounded-xl">
+                      <h3 className="font-bold text-primary">Στατιστικό 1</h3>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Αριθμός/Κείμενο</label>
+                        <Input name="stats1Number" defaultValue={settings?.stats1Number} placeholder="π.χ. 60+" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Περιγραφή</label>
+                        <Input name="stats1Label" defaultValue={settings?.stats1Label} placeholder="π.χ. Χρόνια Ιστορίας" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 border p-4 rounded-xl">
+                      <h3 className="font-bold text-primary">Στατιστικό 2</h3>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Αριθμός/Κείμενο</label>
+                        <Input name="stats2Number" defaultValue={settings?.stats2Number} placeholder="π.χ. 300+" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Περιγραφή</label>
+                        <Input name="stats2Label" defaultValue={settings?.stats2Label} placeholder="π.χ. Μαθητές" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 border p-4 rounded-xl">
+                      <h3 className="font-bold text-primary">Στατιστικό 3</h3>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Αριθμός/Κείμενο</label>
+                        <Input name="stats3Number" defaultValue={settings?.stats3Number} placeholder="π.χ. 35+" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Περιγραφή</label>
+                        <Input name="stats3Label" defaultValue={settings?.stats3Label} placeholder="π.χ. Εκπαιδευτικοί" />
+                      </div>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={updateSettings.isPending}>
+                    Save Stats
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="announcements">
             <Card className="border-2 border-primary/10 shadow-lg">

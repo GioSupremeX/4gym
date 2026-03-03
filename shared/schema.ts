@@ -40,6 +40,13 @@ export const siteSettings = pgTable("site_settings", {
   activitiesPageContent: text("activities_page_content").notNull().default("Το σχολείο μας συμμετέχει σε πλήθος εκπαιδευτικών προγραμμάτων, αθλητικών δραστηριοτήτων και πολιτιστικών εκδηλώσεων."),
   announcementsPageContent: text("announcements_page_content").notNull().default("Μείνετε ενημερωμένοι για όλες τις τελευταίες ανακοινώσεις, εγγραφές και εκδηλώσεις του σχολείου μας."),
   contactPageContent: text("contact_page_content").notNull().default("Μπορείτε να επικοινωνήσετε μαζί μας τηλεφωνικά, μέσω email ή να μας επισκεφθείτε στον χώρο του σχολείου."),
+  // School Stats
+  stats1Number: text("stats_1_number").notNull().default("60+"),
+  stats1Label: text("stats_1_label").notNull().default("Χρόνια Ιστορίας"),
+  stats2Number: text("stats_2_number").notNull().default("300+"),
+  stats2Label: text("stats_2_label").notNull().default("Μαθητές"),
+  stats3Number: text("stats_3_number").notNull().default("35+"),
+  stats3Label: text("stats_3_label").notNull().default("Εκπαιδευτικοί"),
   // Magazine Section
   magazineTitle: text("magazine_title").notNull().default("Το Περιοδικό Μας"),
   magazineImageUrl: text("magazine_image_url").notNull().default("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80"),

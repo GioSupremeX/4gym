@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Trophy } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { useState } from "react";
 import { el } from "date-fns/locale";
+import { useSettings } from "@/hooks/use-articles";
 
 export function CalendarSection() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const { data: settings } = useSettings();
 
   return (
     <section className="py-12 bg-secondary/30">
@@ -21,16 +23,16 @@ export function CalendarSection() {
             </CardHeader>
             <CardContent className="p-8 flex flex-col justify-center gap-6 h-full min-h-[300px]">
               <div className="space-y-2">
-                <h4 className="text-4xl font-display font-bold text-primary">60+</h4>
-                <p className="text-muted-foreground font-medium uppercase tracking-wider">Χρόνια Ιστορίας</p>
+                <h4 className="text-4xl font-display font-bold text-primary">{settings?.stats1Number || "60+"}</h4>
+                <p className="text-muted-foreground font-medium uppercase tracking-wider">{settings?.stats1Label || "Χρόνια Ιστορίας"}</p>
               </div>
               <div className="space-y-2">
-                <h4 className="text-4xl font-display font-bold text-primary">300+</h4>
-                <p className="text-muted-foreground font-medium uppercase tracking-wider">Μαθητές</p>
+                <h4 className="text-4xl font-display font-bold text-primary">{settings?.stats2Number || "300+"}</h4>
+                <p className="text-muted-foreground font-medium uppercase tracking-wider">{settings?.stats2Label || "Μαθητές"}</p>
               </div>
               <div className="space-y-2">
-                <h4 className="text-4xl font-display font-bold text-primary">35+</h4>
-                <p className="text-muted-foreground font-medium uppercase tracking-wider">Εκπαιδευτικοί</p>
+                <h4 className="text-4xl font-display font-bold text-primary">{settings?.stats3Number || "35+"}</h4>
+                <p className="text-muted-foreground font-medium uppercase tracking-wider">{settings?.stats3Label || "Εκπαιδευτικοί"}</p>
               </div>
             </CardContent>
           </Card>
