@@ -469,6 +469,9 @@ export default function AdminDashboard() {
                           <option value="schedule">Ωράριο</option>
                           <option value="rules">Κανονισμός</option>
                           <option value="evaluation">Αυτοαξιολόγηση</option>
+                          <option value="students">Μαθητές</option>
+                          <option value="activities">Δραστηριότητες</option>
+                          <option value="contact">Επικοινωνία</option>
                         </select>
                       </div>
                       <Textarea name="content" placeholder="Περιεχόμενο" rows={8} required />
@@ -529,6 +532,9 @@ export default function AdminDashboard() {
                                   <option value="schedule">Ωράριο</option>
                                   <option value="rules">Κανονισμός</option>
                                   <option value="evaluation">Αυτοαξιολόγηση</option>
+                                  <option value="students">Μαθητές</option>
+                                  <option value="activities">Δραστηριότητες</option>
+                                  <option value="contact">Επικοινωνία</option>
                                 </select>
                               </div>
                               <Textarea name="content" defaultValue={a.content} placeholder="Περιεχόμενο" rows={8} required />

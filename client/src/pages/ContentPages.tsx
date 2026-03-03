@@ -212,15 +212,72 @@ export function AboutPage() {
 }
 
 export function StudentsPage() {
-  const { data: settings, isLoading } = useSettings();
-  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
-  return <GenericPage title="Μαθητές" description={settings?.studentsPageContent || "Εδώ μπορείτε να βρείτε πληροφορίες για τις μαθητικές κοινότητες, το ωρολόγιο πρόγραμμα και άλλες χρήσιμες ανακοινώσεις για τους μαθητές μας."} icon={Users} />;
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
+    queryKey: ["/api/articles/category/students"],
+  });
+
+  if (settingsLoading || articlesLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+
+  return (
+    <GenericPage title="Μαθητές" description={settings?.studentsPageContent || ""} icon={Users}>
+      <div className="space-y-8 mt-12">
+        {articles?.map((art) => (
+          <ArticleCard key={art.id} article={art} />
+        ))}
+      </div>
+    </GenericPage>
+  );
+}
+
+function ArticleCard({ article }: { article: Article }) {
+  return (
+    <Card className="relative overflow-hidden border-2 border-primary/10 hover:border-primary/30 shadow-md hover:shadow-xl transition-all duration-300 group rounded-2xl">
+      <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
+      <CardHeader className="pb-4">
+        <Link href={`/articles/${article.id}`}>
+          <CardTitle className="text-3xl text-primary font-display font-bold leading-tight group-hover:translate-x-1 transition-transform cursor-pointer">
+            {article.title}
+          </CardTitle>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        <Separator className="mb-6 opacity-50" />
+        {article.imageUrls && article.imageUrls.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {article.imageUrls.map((url, i) => (
+              <img key={i} src={url} alt="" className="rounded-xl object-cover aspect-video shadow-md" />
+            ))}
+          </div>
+        )}
+        <p className="text-lg text-muted-foreground whitespace-pre-wrap leading-relaxed line-clamp-4">
+          {article.content}
+        </p>
+        <Link href={`/articles/${article.id}`}>
+          <Button variant="link" className="mt-4 p-0 h-auto font-bold text-primary">Διαβάστε περισσότερα...</Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function ActivitiesPage() {
-  const { data: settings, isLoading } = useSettings();
-  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
-  return <GenericPage title="Δραστηριότητες" description={settings?.activitiesPageContent || ""} icon={Trophy} />;
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
+    queryKey: ["/api/articles/category/activities"],
+  });
+
+  if (settingsLoading || articlesLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+
+  return (
+    <GenericPage title="Δραστηριότητες" description={settings?.activitiesPageContent || ""} icon={Trophy}>
+      <div className="space-y-8 mt-12">
+        {articles?.map((art) => (
+          <ArticleCard key={art.id} article={art} />
+        ))}
+      </div>
+    </GenericPage>
+  );
 }
 
 export function AnnouncementsPage() {
@@ -268,7 +325,20 @@ export function AnnouncementsPage() {
 }
 
 export function ContactPage() {
-  const { data: settings, isLoading } = useSettings();
-  if (isLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
-  return <GenericPage title="Επικοινωνία" description={settings?.contactPageContent || ""} icon={Users} />;
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
+    queryKey: ["/api/articles/category/contact"],
+  });
+
+  if (settingsLoading || articlesLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
+
+  return (
+    <GenericPage title="Επικοινωνία" description={settings?.contactPageContent || ""} icon={Users}>
+      <div className="space-y-8 mt-12">
+        {articles?.map((art) => (
+          <ArticleCard key={art.id} article={art} />
+        ))}
+      </div>
+    </GenericPage>
+  );
 }

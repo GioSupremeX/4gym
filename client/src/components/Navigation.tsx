@@ -87,16 +87,16 @@ export function Navigation() {
                       {item.label} <ChevronDown className="h-3 w-3" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuContent align="start" className="w-56 bg-white dark:bg-zinc-950 border-2 shadow-xl z-[60]">
                     {item.submenu.map((sub) => (
                       <DropdownMenuSub key={sub.label}>
-                        <DropdownMenuSubTrigger>
+                        <DropdownMenuSubTrigger className="focus:bg-primary/10">
                           <span className="flex-1">{sub.label}</span>
                         </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
+                        <DropdownMenuSubContent className="bg-white dark:bg-zinc-950 border-2 shadow-xl z-[70]">
                           {sub.items.map((subItem) => (
-                            <DropdownMenuItem key={subItem.href} asChild>
-                              <Link href={subItem.href}>{subItem.label}</Link>
+                            <DropdownMenuItem key={subItem.href} asChild className="focus:bg-primary/10">
+                              <Link href={subItem.href} className="w-full cursor-pointer">{subItem.label}</Link>
                             </DropdownMenuItem>
                           ))}
                         </DropdownMenuSubContent>
