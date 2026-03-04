@@ -335,9 +335,15 @@ export function ContactPage() {
   return (
     <GenericPage title="Επικοινωνία" description={settings?.contactPageContent || ""} icon={Users}>
       <div className="space-y-8 mt-12">
-        {articles?.map((art) => (
-          <ArticleCard key={art.id} article={art} />
-        ))}
+        {articles && articles.length > 0 ? (
+          articles.map((art) => (
+            <ArticleCard key={art.id} article={art} />
+          ))
+        ) : (
+          <div className="text-center py-12 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/10">
+            <p className="text-muted-foreground italic">Δεν υπάρχουν ακόμα δημοσιεύσεις στην ενότητα Επικοινωνία.</p>
+          </div>
+        )}
       </div>
     </GenericPage>
   );

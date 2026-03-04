@@ -32,7 +32,7 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-primary-foreground/80">
                 <MapPin className="h-5 w-5 shrink-0" />
-                <span>Βενετοκλέων, Ρόδος 851 00</span>
+                <span>Πατριάρχου Αθηναγόρα 58, Ρόδος</span>
               </div>
               <div className="flex items-center gap-3 text-primary-foreground/80">
                 <Phone className="h-5 w-5 shrink-0" />

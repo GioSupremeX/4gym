@@ -431,11 +431,23 @@ export default function AdminDashboard() {
                     updateSettings.mutate(Object.fromEntries(formData));
                   }}
                 >
-                  <Input name="magazineTitle" defaultValue={settings?.magazineTitle} placeholder="Τίτλος" />
-                  <Input name="magazineImageUrl" defaultValue={settings?.magazineImageUrl} placeholder="URL Εικόνας" />
-                  <Input name="magazineButtonLabel" defaultValue={settings?.magazineButtonLabel} placeholder="Label Κουμπιού" />
-                  <Input name="magazineButtonUrl" defaultValue={settings?.magazineButtonUrl} placeholder="Link Κουμπιού" />
-                  <Button type="submit" className="w-full" disabled={updateSettings.isPending}>Save Magazine</Button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Τίτλος Περιοδικού</label>
+                    <Input name="magazineTitle" defaultValue={settings?.magazineTitle} placeholder="Τίτλος" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Εικόνας Εξωφύλλου</label>
+                    <Input name="magazineImageUrl" defaultValue={settings?.magazineImageUrl} placeholder="URL Εικόνας" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κείμενο Κουμπιού</label>
+                    <Input name="magazineButtonLabel" defaultValue={settings?.magazineButtonLabel} placeholder="Label Κουμπιού" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Σύνδεσμος Περιοδικού (URL)</label>
+                    <Input name="magazineButtonUrl" defaultValue={settings?.magazineButtonUrl} placeholder="Link Κουμπιού" />
+                  </div>
+                  <Button type="submit" className="w-full mt-4" disabled={updateSettings.isPending}>Save Magazine Settings</Button>
                 </form>
               </CardContent>
             </Card>
