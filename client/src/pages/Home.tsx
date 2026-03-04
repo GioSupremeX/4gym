@@ -60,7 +60,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-4 space-y-8">
+              <MagazineCard />
               <ArticleList />
             </div>
           </div>
