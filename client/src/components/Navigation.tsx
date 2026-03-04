@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Menu, X, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, X, Settings, ChevronDown, ChevronRight, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSettings } from "@/hooks/use-articles";
+import { useTheme } from "@/components/theme-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +54,7 @@ export function Navigation() {
   const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { data: settings } = useSettings();
+  const { theme, setTheme } = useTheme();
 
   const logoUrl = settings?.logoUrl;
   const schoolName = settings?.schoolName || "4ο ΓΥΜΝΑΣΙΟ ΡΟΔΟΥ";
@@ -71,7 +73,7 @@ export function Navigation() {
             )}
             <div className="hidden flex-col sm:flex">
               <span className="text-sm font-bold leading-none text-primary uppercase">{schoolName}</span>
-              <span className="text-xs font-medium text-muted-foreground uppercase">ΚΑΖΟΥΛΛΕΙΟ</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase text-zinc-600 dark:text-zinc-400">ΚΑΖΟΥΛΛΕΙΟ</span>
             </div>
           </Link>
 
@@ -117,18 +119,40 @@ export function Navigation() {
                 </Link>
               )
             ))}
-            <Link href="/secret/edit" className="ml-4 text-muted-foreground hover:text-primary transition-colors">
-              <Settings className="h-5 w-5" />
-            </Link>
+            
+            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+
+              <Link href="/secret/edit" className="text-muted-foreground hover:text-primary transition-colors">
+                <Settings className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
 
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle menu</span>
+            <div className="flex items-center gap-2 md:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
-            </SheetTrigger>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+            </div>
             <SheetContent side="right" className="w-80 overflow-y-auto">
               <div className="flex flex-col gap-4 mt-8 pb-8">
                 {NAV_ITEMS.map((item) => (
@@ -171,7 +195,7 @@ export function Navigation() {
                 ))}
                 <Link
                   href="/secret/edit"
-                  className="text-lg font-medium text-muted-foreground flex items-center gap-2 mt-4"
+                  className="text-lg font-medium text-muted-foreground flex items-center gap-2 mt-4 border-t pt-4"
                   onClick={() => setIsOpen(false)}
                 >
                   <Settings className="h-5 w-5" /> Διαχείριση
