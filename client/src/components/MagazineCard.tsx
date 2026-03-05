@@ -6,6 +6,8 @@ import { useSettings } from "@/hooks/use-articles";
 export function MagazineCard() {
   const { data: settings } = useSettings();
 
+  if (settings?.magazineEnabled === "false") return null;
+
   return (
     <Card className="overflow-hidden border-2 border-primary/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">

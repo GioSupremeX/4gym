@@ -52,6 +52,7 @@ export const siteSettings = pgTable("site_settings", {
   magazineImageUrl: text("magazine_image_url").notNull().default("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80"),
   magazineButtonLabel: text("magazine_button_label").notNull().default("Διαβάστε το Τεύχος"),
   magazineButtonUrl: text("magazine_button_url").notNull().default("#"),
+  magazineEnabled: text("magazine_enabled").notNull().default("true"),
 });
 
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true });

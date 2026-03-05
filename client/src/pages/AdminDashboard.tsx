@@ -432,6 +432,13 @@ export default function AdminDashboard() {
                   }}
                 >
                   <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Εμφάνιση Περιοδικού</label>
+                    <select name="magazineEnabled" defaultValue={settings?.magazineEnabled || "true"} className="w-full p-2 border rounded-md bg-background">
+                      <option value="true">Ενεργοποιημένο</option>
+                      <option value="false">Απενεργοποιημένο</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Τίτλος Περιοδικού</label>
                     <Input name="magazineTitle" defaultValue={settings?.magazineTitle} placeholder="Τίτλος" />
                   </div>
