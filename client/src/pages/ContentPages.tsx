@@ -264,17 +264,25 @@ function ArticleCard({ article }: { article: Article }) {
 export function ActivitiesPage() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
-    queryKey: ["/api/articles/category/activities"],
+    queryKey: ["/api/articles"],
   });
 
   if (settingsLoading || articlesLoading) return <div className="p-20 text-center">Φόρτωση...</div>;
 
+  const activitiesArticles = articles?.filter(a => a.category === "activities" || a.category === "general") || [];
+
   return (
     <GenericPage title="Δραστηριότητες" description={settings?.activitiesPageContent || ""} icon={Trophy}>
       <div className="space-y-8 mt-12">
-        {articles?.map((art) => (
-          <ArticleCard key={art.id} article={art} />
-        ))}
+        {activitiesArticles.length > 0 ? (
+          activitiesArticles.map((art) => (
+            <ArticleCard key={art.id} article={art} />
+          ))
+        ) : (
+          <div className="text-center py-12 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/10">
+            <p className="text-muted-foreground italic">Δεν υπάρχουν ακόμα δραστηριότητες.</p>
+          </div>
+        )}
       </div>
     </GenericPage>
   );

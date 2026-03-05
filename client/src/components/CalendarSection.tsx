@@ -40,26 +40,29 @@ export function CalendarSection() {
           {/* Calendar */}
           <Card className="flex-1 border-2 border-primary/20 shadow-lg bg-white dark:bg-zinc-900">
             <CardHeader className="bg-primary/5 border-b border-primary/10">
-              <CardTitle className="flex items-center gap-2 text-primary font-display whitespace-nowrap overflow-hidden text-ellipsis">
+              <CardTitle className="flex items-center gap-2 text-primary font-display">
                 <CalendarIcon className="h-5 w-5 shrink-0" />
-                <span className="truncate">Προγραμματισμός Μήνα</span>
+                <span className="text-xl sm:text-2xl">Προγραμματισμός Μήνα</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 flex justify-center items-center h-full">
-              <div className="w-full max-w-[350px] overflow-hidden">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  locale={el}
-                  className="rounded-md border shadow-sm bg-white dark:bg-zinc-950 p-4 scale-90 sm:scale-100 transition-all"
-                  classNames={{
-                    head_cell: "text-muted-foreground font-normal text-[0.8rem]",
-                    cell: "h-10 w-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-primary/5 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                    day_today: "bg-accent text-accent-foreground",
-                  }}
-                />
+            <CardContent className="p-4 sm:p-6 flex justify-center items-center h-full">
+              <div className="w-full flex justify-center overflow-auto py-2">
+                <div className="scale-90 sm:scale-100 origin-center">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    locale={el}
+                    className="rounded-md border shadow-sm bg-white dark:bg-zinc-950 p-3 sm:p-4"
+                    classNames={{
+                      head_cell: "text-muted-foreground font-normal text-[0.8rem] w-8 sm:w-10",
+                      cell: "h-8 w-8 sm:h-10 sm:w-10 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-primary/5 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                      day_today: "bg-accent text-accent-foreground",
+                      day: "h-8 w-8 sm:h-10 sm:w-10 p-0 font-normal aria-selected:opacity-100",
+                    }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
