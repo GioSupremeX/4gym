@@ -46,11 +46,11 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
   });
 
   const reportComment = useMutation({
-    mutationFn: async (commentId: number, reason: string) => {
-      const res = await fetch(`/api/comments/${commentId}/report`, {
+    mutationFn: async (data: { commentId: number; reason: string }) => {
+      const res = await fetch(`/api/comments/${data.commentId}/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: data.reason }),
       });
       if (!res.ok) throw new Error("Failed to report comment");
       return res.json();
@@ -125,7 +125,7 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
                     size="sm"
                     onClick={() => {
                       const reason = prompt("Λόγος αναφοράς:");
-                      if (reason) reportComment.mutate(comment.id, reason);
+                      if (reason) reportComment.mutate({ commentId: comment.id, reason });
                     }}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
