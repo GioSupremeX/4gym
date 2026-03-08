@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Announcement } from "@shared/schema";
+import { Announcement, ReportedComment } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -23,6 +23,10 @@ export default function AdminDashboard() {
   const { data: articles, isLoading: articlesLoading } = useArticles();
   const { data: announcements, isLoading: annLoading } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
+  });
+  const { data: reportedComments, isLoading: reportsLoading } = useQuery<(ReportedComment & { comment: any })[]>({
+    queryKey: ["/api/comments/reports"],
+    enabled: isAuthenticated,
   });
   
   const [editingArticle, setEditingArticle] = useState<any>(null);
@@ -205,6 +209,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="announcements" className="flex-1 min-w-[100px]">Ανακοινώσεις</TabsTrigger>
             <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>
             <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
+            <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stats">
@@ -439,6 +444,13 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div className="space-y-2">
+                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Σχόλια</label>
+                    <select name="commentsEnabled" defaultValue={settings?.commentsEnabled || "true"} className="w-full p-2 border rounded-md bg-background">
+                      <option value="true">Ενεργοποιημένα</option>
+                      <option value="false">Απενεργοποιημένα</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Τίτλος Περιοδικού</label>
                     <Input name="magazineTitle" defaultValue={settings?.magazineTitle} placeholder="Τίτλος" />
                   </div>
@@ -630,6 +642,63 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="moderation">
+            <Card className="border-2 border-primary/10 shadow-lg">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <Flag className="h-5 w-5" /> Αναφορές Σχολίων
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {reportsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground animate-pulse">Φόρτωση αναφορών...</div>
+                ) : !reportedComments || reportedComments.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground italic">Δεν υπάρχουν αναφορές σχολίων.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {reportedComments.map((report) => (
+                      <Card key={report.id} className="border-2 border-destructive/30 bg-destructive/5">
+                        <CardContent className="pt-4 space-y-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground font-bold">Λόγος Αναφοράς:</p>
+                            <p className="text-foreground">{report.reason}</p>
+                          </div>
+                          <div className="bg-muted/50 p-3 rounded-lg border border-muted">
+                            <p className="text-xs text-muted-foreground font-bold">Σχόλιο:</p>
+                            <p className="text-sm font-semibold">{report.comment?.authorName}</p>
+                            <p className="text-sm text-foreground mt-2">{report.comment?.content}</p>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                if (window.confirm("Αre you sure you want to delete this comment?")) {
+                                  deleteComment.mutate(report.comment.id);
+                                }
+                              }}
+                              disabled={deleteComment.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" /> Διαγραφή Σχολίου
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteReport.mutate(report.id)}
+                              disabled={deleteReport.isPending}
+                            >
+                              Απορρίψη Αναφοράς
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

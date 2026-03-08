@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -53,16 +53,40 @@ export const siteSettings = pgTable("site_settings", {
   magazineButtonLabel: text("magazine_button_label").notNull().default("Διαβάστε το Τεύχος"),
   magazineButtonUrl: text("magazine_button_url").notNull().default("#"),
   magazineEnabled: text("magazine_enabled").notNull().default("true"),
+  commentsEnabled: text("comments_enabled").notNull().default("true"),
+});
+
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id").notNull(),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email").notNull(),
+  content: text("content").notNull(),
+  parentCommentId: integer("parent_comment_id"),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+});
+
+export const reportedComments = pgTable("reported_comments", {
+  id: serial("id").primaryKey(),
+  commentId: integer("comment_id").notNull(),
+  reason: text("reason").notNull(),
+  reportedAt: timestamp("reported_at").defaultNow().notNull(),
 });
 
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, publishedAt: true });
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true });
+export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, publishedAt: true });
+export const insertReportSchema = createInsertSchema(reportedComments).omit({ id: true, reportedAt: true });
 
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
 export type Article = typeof articles.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcements.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type ReportedComment = typeof reportedComments.$inferSelect;
+export type InsertReport = z.infer<typeof insertReportSchema>;
 
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;

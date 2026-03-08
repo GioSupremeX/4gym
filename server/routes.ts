@@ -1,7 +1,7 @@
 import { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema } from "@shared/schema";
+import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema } from "@shared/schema";
 import { api } from "@shared/routes";
 
 export async function registerRoutes(server: Server, app: Express): Promise<void> {
@@ -72,5 +72,41 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     const articlesList = await storage.getArticles();
     const filtered = articlesList.filter(a => a.category === req.params.category);
     res.json(filtered);
+  });
+
+  // Comments
+  app.get("/api/articles/:id/comments", async (req: Request, res: Response) => {
+    const comments = await storage.getCommentsByArticle(Number(req.params.id));
+    res.json(comments);
+  });
+
+  app.post("/api/articles/:id/comments", async (req: Request, res: Response) => {
+    const parsed = insertCommentSchema.safeParse({ ...req.body, articleId: Number(req.params.id) });
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const comment = await storage.createComment(parsed.data);
+    res.json(comment);
+  });
+
+  app.delete("/api/comments/:id", async (req: Request, res: Response) => {
+    await storage.deleteComment(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // Reports
+  app.get("/api/comments/reports", async (_req: Request, res: Response) => {
+    const reports = await storage.getReportedComments();
+    res.json(reports);
+  });
+
+  app.post("/api/comments/:id/report", async (req: Request, res: Response) => {
+    const parsed = insertReportSchema.safeParse({ ...req.body, commentId: Number(req.params.id) });
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const report = await storage.reportComment(parsed.data);
+    res.json(report);
+  });
+
+  app.delete("/api/comments/reports/:id", async (req: Request, res: Response) => {
+    await storage.deleteReport(Number(req.params.id));
+    res.status(204).end();
   });
 }

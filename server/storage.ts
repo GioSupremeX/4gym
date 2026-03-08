@@ -1,6 +1,6 @@
-import { articles, siteSettings, announcements, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement } from "@shared/schema";
+import { articles, siteSettings, announcements, comments, reportedComments, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Articles
@@ -18,6 +18,16 @@ export interface IStorage {
   // Settings
   getSettings(): Promise<SiteSettings>;
   updateSettings(settings: UpdateSiteSettings): Promise<SiteSettings>;
+
+  // Comments
+  getCommentsByArticle(articleId: number): Promise<Comment[]>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  deleteComment(id: number): Promise<void>;
+
+  // Reports
+  getReportedComments(): Promise<(ReportedComment & { comment: Comment })[]>;
+  reportComment(report: InsertReport): Promise<ReportedComment>;
+  deleteReport(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -76,6 +86,37 @@ export class DatabaseStorage implements IStorage {
       [settings] = await db.update(siteSettings).set(update).where(eq(siteSettings.id, 1)).returning();
     }
     return settings;
+  }
+
+  async getCommentsByArticle(articleId: number): Promise<Comment[]> {
+    return await db.select().from(comments).where(eq(comments.articleId, articleId)).orderBy(desc(comments.publishedAt));
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [created] = await db.insert(comments).values(comment).returning();
+    return created;
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
+    await db.delete(reportedComments).where(eq(reportedComments.commentId, id));
+  }
+
+  async getReportedComments(): Promise<(ReportedComment & { comment: Comment })[]> {
+    const reported = await db.select().from(reportedComments).orderBy(desc(reportedComments.reportedAt));
+    return Promise.all(reported.map(async (r) => {
+      const [comment] = await db.select().from(comments).where(eq(comments.id, r.commentId));
+      return { ...r, comment };
+    }));
+  }
+
+  async reportComment(report: InsertReport): Promise<ReportedComment> {
+    const [created] = await db.insert(reportedComments).values(report).returning();
+    return created;
+  }
+
+  async deleteReport(id: number): Promise<void> {
+    await db.delete(reportedComments).where(eq(reportedComments.id, id));
   }
 }
 

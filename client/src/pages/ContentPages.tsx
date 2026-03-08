@@ -8,6 +8,7 @@ import { Announcement, Article } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { CommentSection } from "@/components/CommentSection";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
@@ -87,6 +88,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
   const { data: allArticles } = useQuery<Article[]>({
     queryKey: ["/api/articles"],
   });
+  const { data: settings } = useSettings();
 
   if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
   if (!article) return <div className="p-20 text-center font-display text-destructive">Το άρθρο δεν βρέθηκε.</div>;
@@ -135,8 +137,11 @@ export function ArticlePage({ params }: { params: { id: string } }) {
             </CardContent>
           </Card>
 
+          {/* Comments Section */}
+          <CommentSection articleId={article.id} commentsEnabled={settings?.commentsEnabled || "true"} />
+
           {recommendations.length > 0 && (
-            <div className="space-y-6">
+            <div className="space-y-6 mt-12">
               <h3 className="text-2xl font-display font-bold text-primary">Διαβάστε επίσης</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {recommendations.map((rec) => (
