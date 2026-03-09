@@ -127,6 +127,28 @@ export default function AdminDashboard() {
     },
   });
 
+  const deleteComment = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete comment");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
+      toast({ title: "Επιτυχία", description: "Το σχόλιο διαγράφηκε." });
+    },
+  });
+
+  const deleteReport = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/comments/reports/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete report");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
+      toast({ title: "Επιτυχία", description: "Η αναφορά διαγράφηκε." });
+    },
+  });
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const files = event.target.files;
     if (!files) return;
