@@ -57,7 +57,12 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
     },
     onSuccess: () => {
       setReportReason(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
       toast({ title: "Επιτυχία", description: "Το σχόλιο αναφέρθηκε με επιτυχία." });
+    },
+    onError: (error) => {
+      console.error("Report comment error:", error);
+      toast({ title: "Σφάλμα", description: "Αποτυχία αναφοράς σχολίου.", variant: "destructive" });
     },
   });
 
