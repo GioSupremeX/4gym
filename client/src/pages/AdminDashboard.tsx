@@ -131,10 +131,15 @@ export default function AdminDashboard() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete comment");
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
-      toast({ title: "Επιτυχία", description: "Το σχόλιο διαγράφηκε." });
+      toast({ title: "Επιτυχία", description: "Το σχόλιο και οι αναφορές του διαγράφηκαν." });
+    },
+    onError: (error) => {
+      console.error("Delete comment error:", error);
+      toast({ title: "Σφάλμα", description: "Αποτυχία διαγραφής σχολίου.", variant: "destructive" });
     },
   });
 
@@ -142,10 +147,15 @@ export default function AdminDashboard() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/comments/reports/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete report");
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
       toast({ title: "Επιτυχία", description: "Η αναφορά διαγράφηκε." });
+    },
+    onError: (error) => {
+      console.error("Delete report error:", error);
+      toast({ title: "Σφάλμα", description: "Αποτυχία διαγραφής αναφοράς.", variant: "destructive" });
     },
   });
 
@@ -699,20 +709,28 @@ export default function AdminDashboard() {
                               size="sm"
                               variant="destructive"
                               onClick={() => {
-                                if (window.confirm("Αre you sure you want to delete this comment?")) {
+                                if (window.confirm("Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το σχόλιο;")) {
                                   deleteComment.mutate(report.comment.id);
                                 }
                               }}
                               disabled={deleteComment.isPending}
+                              data-testid="button-delete-comment"
                             >
-                              <Trash2 className="h-4 w-4 mr-1" /> Διαγραφή Σχολίου
+                              {deleteComment.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                              Διαγραφή Σχολίου
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => deleteReport.mutate(report.id)}
+                              onClick={() => {
+                                if (window.confirm("Είστε σίγουροι ότι θέλετε να απορρίψετε αυτή την αναφορά;")) {
+                                  deleteReport.mutate(report.id);
+                                }
+                              }}
                               disabled={deleteReport.isPending}
+                              data-testid="button-dismiss-report"
                             >
+                              {deleteReport.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                               Απορρίψη Αναφοράς
                             </Button>
                           </div>
