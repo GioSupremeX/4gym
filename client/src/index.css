@@ -8,7 +8,7 @@
   --font-display: 'Playfair Display', serif;
   --font-body: 'Roboto', sans-serif;
 
-  /* Classic Greek School Blue Theme */
+  /* Light Mode - Classic Greek School Blue Theme */
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;
 
@@ -35,22 +35,22 @@
 }
 
 .dark {
-  /* Dark mode isn't typical for this style, but providing fallbacks */
-  --background: 222 47% 11%;
+  /* Dark Mode */
+  --background: 217 33% 17%;
   --foreground: 210 40% 98%;
   --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 11%;
-  --secondary: 217 19% 27%;
+  --primary-foreground: 217 33% 17%;
+  --secondary: 217 32% 24%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 217 19% 27%;
+  --muted: 217 32% 24%;
   --muted-foreground: 215 20% 65%;
-  --accent: 217 19% 27%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62% 30%;
+  --accent: 45 93% 47%;
+  --accent-foreground: 217 33% 17%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 212.7 26.8% 83.9%;
+  --border: 217 32% 24%;
+  --input: 217 32% 24%;
+  --ring: 217 91% 60%;
 }
 
 @layer base {
