@@ -128,13 +128,14 @@ export default function AdminDashboard() {
   });
 
   const deleteComment = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, articleId }: { id: number; articleId: number }) => {
       const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete comment");
-      return res;
+      return articleId;
     },
-    onSuccess: () => {
+    onSuccess: (articleId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/comments/reports"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/articles/${articleId}/comments`] });
       toast({ title: "Επιτυχία", description: "Το σχόλιο και οι αναφορές του διαγράφηκαν." });
     },
     onError: (error) => {
@@ -710,7 +711,7 @@ export default function AdminDashboard() {
                               variant="destructive"
                               onClick={() => {
                                 if (window.confirm("Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το σχόλιο;")) {
-                                  deleteComment.mutate(report.comment.id);
+                                  deleteComment.mutate({ id: report.comment.id, articleId: report.comment.articleId });
                                 }
                               }}
                               disabled={deleteComment.isPending}
