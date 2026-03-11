@@ -12,21 +12,21 @@ import { CommentSection } from "@/components/CommentSection";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-background font-body">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-primary/5 font-body">
       <Navigation />
-      <main className="flex-grow container mx-auto px-4 py-12">
-        <Card className="max-w-4xl mx-auto shadow-xl border-2 border-primary/10">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 text-center py-12">
-            <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-              <Icon className="h-10 w-10 text-primary" />
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-16">
+        <Card className="max-w-4xl mx-auto paper-shadow-lg border-2 border-primary/15 rounded-3xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-primary/8 to-primary/5 border-b border-primary/10 text-center py-16 md:py-20">
+            <div className="mx-auto w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center mb-8 shadow-lg">
+              <Icon className="h-12 w-12 text-primary" />
             </div>
-            <CardTitle className="text-4xl font-display font-bold text-primary uppercase tracking-tight">
+            <CardTitle className="text-4xl md:text-5xl font-display font-bold text-primary uppercase tracking-tight leading-tight">
               {title}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8 md:p-12">
+          <CardContent className="p-8 md:p-16">
             {description && (
-              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto text-center whitespace-pre-wrap mb-12">
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto text-center whitespace-pre-wrap mb-12 font-light">
                 {description}
               </p>
             )}
@@ -50,30 +50,32 @@ export function CategoryPage({ category, title }: { category: string, title: str
     <GenericPage title={title} description="" icon={FileText}>
       <div className="space-y-8 max-w-3xl mx-auto">
         {articles?.map((art) => (
-          <Card key={art.id} className="relative overflow-hidden border-2 border-primary/10 hover:border-primary/30 shadow-md hover:shadow-xl transition-all duration-300 group rounded-2xl">
-            <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
-            <CardHeader className="pb-4">
-              <CardTitle className="text-3xl text-primary font-display font-bold leading-tight group-hover:translate-x-1 transition-transform">{art.title}</CardTitle>
+          <Card key={art.id} className="relative overflow-hidden border-2 border-primary/15 hover:border-primary/40 paper-shadow hover:paper-shadow-lg card-hover group rounded-3xl">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary to-primary/60" />
+            <CardHeader className="pb-6 pl-6 pr-6 pt-6">
+              <CardTitle className="text-2xl md:text-3xl text-primary font-display font-bold leading-tight group-hover:translate-x-2 smooth-transition">
+                {art.title}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Separator className="mb-6 opacity-50" />
+            <CardContent className="pl-6 pr-6 pb-6">
+              <Separator className="mb-6 opacity-30" />
               {art.imageUrls && art.imageUrls.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                   {art.imageUrls.map((url, i) => (
-                    <img key={i} src={url} alt="" className="rounded-xl object-cover aspect-video shadow-md" />
+                    <img key={i} src={url} alt="" className="rounded-2xl object-cover aspect-video paper-shadow-lg hover:paper-shadow-lg smooth-transition" />
                   ))}
                 </div>
               )}
-              <p className="text-lg text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground whitespace-pre-wrap leading-relaxed font-light">
                 {art.content}
               </p>
             </CardContent>
           </Card>
         ))}
         {(!articles || articles.length === 0) && (
-          <div className="text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed border-primary/10">
+          <div className="text-center py-20 md:py-28 bg-gradient-to-br from-primary/8 to-primary/5 rounded-3xl border-2 border-dashed border-primary/15">
             <FileText className="h-16 w-16 text-muted-foreground/20 mx-auto mb-6" />
-            <p className="text-2xl font-display text-muted-foreground italic">Δεν υπάρχει περιεχόμενο ακόμα.</p>
+            <p className="text-xl md:text-2xl font-display text-muted-foreground italic">Δεν υπάρχει περιεχόμενο ακόμα.</p>
           </div>
         )}
       </div>

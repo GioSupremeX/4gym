@@ -60,14 +60,14 @@ export function Navigation() {
   const schoolName = settings?.schoolName || "4ο ΓΥΜΝΑΣΙΟ ΡΟΔΟΥ";
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-primary/15 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 school-header-gradient/5">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 cursor-pointer">
+          <Link href="/" className="flex items-center gap-3 cursor-pointer hover:opacity-80 smooth-transition">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
+              <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain drop-shadow-sm" />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xl font-display shadow-lg">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold text-lg font-display paper-shadow-lg">
                 4
               </div>
             )}
