@@ -32,6 +32,14 @@ function Router() {
 }
 
 function App() {
+  // Clear dark mode from localStorage on load to force light mode
+  if (typeof localStorage !== 'undefined') {
+    const saved = localStorage.getItem("school-theme");
+    if (saved === "dark") {
+      localStorage.removeItem("school-theme");
+    }
+  }
+  
   return (
     <ThemeProvider defaultTheme="light" storageKey="school-theme">
       <QueryClientProvider client={queryClient}>
