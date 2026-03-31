@@ -3,19 +3,27 @@ import { Footer } from "@/components/Footer";
 import { MagazineCard } from "@/components/MagazineCard";
 import { ArticleList } from "@/components/ArticleList";
 import { CalendarSection } from "@/components/CalendarSection";
-import { Separator } from "@/components/ui/separator";
 import { useSettings } from "@/hooks/use-articles";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
+import { Bell, ChevronRight, Sparkles } from "lucide-react";
+import { format } from "date-fns";
+import { el } from "date-fns/locale";
+import { Announcement } from "@shared/schema";
 
 export default function Home() {
   const { data: settings, isLoading } = useSettings();
+  const { data: announcements } = useQuery<Announcement[]>({
+    queryKey: ["/api/announcements"],
+  });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background font-body">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navigation />
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <Skeleton className="h-[400px] w-full rounded-2xl" />
+        <main className="flex-grow container mx-auto px-4 py-12">
+          <Skeleton className="h-[500px] w-full rounded-3xl" />
         </main>
         <Footer />
       </div>
@@ -26,59 +34,138 @@ export default function Home() {
   const aboutTitle = settings?.aboutTitle || "Καλώς Ήρθατε Στο 4ο Γυμνάσιο Ρόδου - Καζούλλειο";
   const aboutText = settings?.aboutText || "Το 4ο Γυμνάσιο Ρόδου – Καζούλλειο αποτελεί έναν χώρο μάθησης, δημιουργίας και συνεργασίας.";
   const heroImage = settings?.heroImageUrl || "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&h=800&fit=crop";
+  const recentAnnouncements = (announcements || []).slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-body">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navigation />
 
       <main className="flex-grow">
-        <section className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-            <div className="lg:col-span-8 space-y-8 lg:space-y-10">
-              <div className="text-center space-y-6">
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-bold text-primary tracking-tight leading-tight">
+
+        {/* ── Announcements ticker (if any) ── */}
+        {recentAnnouncements.length > 0 && (
+          <div className="bg-gradient-to-r from-accent/90 to-accent text-accent-foreground py-2.5 px-4 border-b border-accent/20">
+            <div className="container mx-auto flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-2 shrink-0 font-bold text-sm uppercase tracking-wider">
+                <Bell className="h-3.5 w-3.5 animate-bounce" />
+                Ανακοίνωση
+              </div>
+              <div className="h-4 w-px bg-accent-foreground/30 shrink-0" />
+              <div className="flex gap-6 overflow-hidden">
+                {recentAnnouncements.map((ann) => (
+                  <Link
+                    key={ann.id}
+                    href="/announcements"
+                    className="text-sm font-medium hover:underline whitespace-nowrap"
+                  >
+                    {ann.title}
+                  </Link>
+                ))}
+              </div>
+              <Link href="/announcements" className="shrink-0 ml-auto flex items-center gap-1 text-xs font-bold uppercase tracking-wider hover:underline">
+                Όλες <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Hero Section ── */}
+        <section className="container mx-auto px-4 py-10 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+
+            {/* Left — hero */}
+            <div className="lg:col-span-8 space-y-7">
+              <div className="text-center space-y-5">
+                <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Σχολικό Έτος 2025–2026
+                </div>
+                <h1 className="text-4xl sm:text-5xl font-display font-bold text-primary tracking-tight leading-tight">
                   {aboutTitle}
                 </h1>
-                <Separator className="mx-auto w-32 bg-gradient-to-r from-accent via-accent to-accent/50 h-1.5 rounded-full" />
-                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="h-px flex-1 max-w-16 bg-gradient-to-r from-transparent to-accent" />
+                  <div className="w-3 h-3 rounded-full bg-accent" />
+                  <div className="h-px flex-1 max-w-16 bg-gradient-to-l from-transparent to-accent" />
+                </div>
+                <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                   {aboutText}
                 </p>
               </div>
 
-              <div className="relative rounded-3xl overflow-hidden paper-shadow-lg border border-primary/10 transform hover:scale-[1.02] smooth-transition group">
+              {/* Hero image */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20 group cursor-pointer">
                 <img
                   src={heroImage}
                   alt={schoolName}
-                  className="w-full h-auto object-cover aspect-video group-hover:brightness-110 smooth-transition"
+                  className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent opacity-50 group-hover:opacity-40 smooth-transition"></div>
-                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white text-center">
-                  <p className="text-xl md:text-2xl font-display font-bold drop-shadow-lg">
-                    Ιστορικό Κτίριο - Σύγχρονη Εκπαίδευση
-                  </p>
+                {/* gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-60" />
+                {/* bottom label */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">4ο Γυμνάσιο Ρόδου</p>
+                      <p className="text-xl md:text-2xl font-display font-bold text-white drop-shadow-lg">
+                        Ιστορικό Κτίριο – Σύγχρονη Εκπαίδευση
+                      </p>
+                    </div>
+                    <div className="hidden md:flex h-12 w-12 bg-white/20 backdrop-blur-sm rounded-2xl items-center justify-center border border-white/30">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              {/* Quick links strip */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Μαθητές", href: "/students", color: "from-blue-500 to-blue-600" },
+                  { label: "Δραστηριότητες", href: "/activities", color: "from-emerald-500 to-emerald-600" },
+                  { label: "Ανακοινώσεις", href: "/announcements", color: "from-violet-500 to-violet-600" },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`bg-gradient-to-br ${item.color} text-white text-sm font-bold py-3 px-4 rounded-2xl text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-1.5`}
+                  >
+                    {item.label}
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                ))}
               </div>
             </div>
 
-            <div className="lg:col-span-4 space-y-8 lg:space-y-10">
+            {/* Right sidebar */}
+            <div className="lg:col-span-4 space-y-6">
               <MagazineCard />
               <ArticleList />
             </div>
           </div>
         </section>
 
+        {/* ── Calendar & Stats ── */}
         <CalendarSection />
 
-        <section className="bg-gradient-to-r from-primary via-primary/95 to-primary text-white py-16 md:py-20 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/greek-vase.png')] opacity-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-transparent to-primary/0"></div>
+        {/* ── Quote Banner ── */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-white py-20 text-center">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/greek-vase.png')] opacity-[0.07]" />
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/2 translate-y-1/2" />
           <div className="container mx-auto px-4 relative z-10">
-            <h2 className="text-3xl md:text-4xl font-display font-bold italic leading-relaxed">
-              "Γηράσκω δ' αεί πολλά διδασκόμενος"
+            <div className="text-6xl font-display text-white/20 leading-none mb-2">"</div>
+            <h2 className="text-3xl md:text-4xl font-display font-bold italic leading-relaxed max-w-2xl mx-auto">
+              Γηράσκω δ' αεί πολλά διδασκόμενος
             </h2>
-            <p className="mt-4 text-lg text-primary-foreground/90 font-light">- Σόλων ο Αθηναίος</p>
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <div className="h-px w-16 bg-white/30" />
+              <p className="text-base text-white/80 font-medium">Σόλων ο Αθηναίος</p>
+              <div className="h-px w-16 bg-white/30" />
+            </div>
           </div>
         </section>
+
       </main>
 
       <Footer />
