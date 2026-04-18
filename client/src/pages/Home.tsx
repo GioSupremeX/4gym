@@ -17,6 +17,8 @@ export default function Home() {
   const { data: announcements } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
   });
+  const currentYear = new Date().getFullYear();
+  const schoolYearEnd = currentYear + 1;
 
   if (isLoading) {
     return (
@@ -76,9 +78,9 @@ export default function Home() {
             {/* Left — hero */}
             <div className="lg:col-span-8 space-y-7">
               <div className="text-center space-y-5">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20 animate-pulse">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20 animate-pulse">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Σχολικό Έτος 2025–2026
+                  Σχολικό Έτος {currentYear}–{schoolYearEnd}
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-display font-bold text-primary tracking-tight leading-tight">
                   {aboutTitle}

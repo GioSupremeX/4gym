@@ -3,6 +3,8 @@ import { useSettings } from "@/hooks/use-articles";
 
 export function Footer() {
   const { data: settings } = useSettings();
+  const currentYear = new Date().getFullYear();
+  const schoolYear = `${currentYear}–${currentYear + 1}`;
 
   const links = [
     { label: settings?.footerLink1Label || "Υπουργείο Παιδείας", href: settings?.footerLink1Url || "https://www.minedu.gov.gr/" },
@@ -64,7 +66,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 border-t border-white/20 pt-8 text-center text-sm text-primary-foreground/70">
-          <p>© {new Date().getFullYear()} {settings?.schoolName || "4ο Γυμνάσιο Ρόδου - Καζούλλειο"}. All rights reserved.</p>
+          <p>© {currentYear} {settings?.schoolName || "4ο Γυμνάσιο Ρόδου - Καζούλλειο"} · Σχολικό Έτος {schoolYear}</p>
         </div>
       </div>
     </footer>
