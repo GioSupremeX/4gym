@@ -154,14 +154,14 @@ export default function Home() {
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/2 translate-y-1/2" />
           <div className="container mx-auto px-4 relative z-10">
-            <div className="text-6xl font-display text-accent/60 leading-none mb-2">"</div>
-            <h2 className="text-3xl md:text-4xl font-display font-bold italic leading-relaxed max-w-2xl mx-auto text-accent drop-shadow-lg">
+            <div className="text-6xl font-display text-white/85 leading-none mb-2 drop-shadow-lg">"</div>
+            <h2 className="text-3xl md:text-4xl font-display font-bold italic leading-relaxed max-w-2xl mx-auto text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
               Γηράσκω δ' αεί πολλά διδασκόμενος
             </h2>
             <div className="mt-6 flex items-center justify-center gap-4">
-              <div className="h-px w-16 bg-accent/40" />
-              <p className="text-base text-white font-semibold tracking-wide">Σόλων ο Αθηναίος</p>
-              <div className="h-px w-16 bg-accent/40" />
+              <div className="h-px w-16 bg-white/50" />
+              <p className="text-base text-accent font-bold tracking-wide drop-shadow-sm">Σόλων ο Αθηναίος</p>
+              <div className="h-px w-16 bg-white/50" />
             </div>
           </div>
         </section>
