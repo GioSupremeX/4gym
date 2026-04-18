@@ -76,7 +76,7 @@ export default function Home() {
             {/* Left — hero */}
             <div className="lg:col-span-8 space-y-7">
               <div className="text-center space-y-5">
-                <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20 animate-pulse">
                   <Sparkles className="h-3.5 w-3.5" />
                   Σχολικό Έτος 2025–2026
                 </div>
@@ -94,14 +94,15 @@ export default function Home() {
               </div>
 
               {/* Hero image */}
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20 group cursor-pointer">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20 group cursor-pointer card-hover smooth-transition">
+                <div className="absolute top-6 right-6 z-10 h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 animate-[float_6s_ease-in-out_infinite]" />
                 <img
                   src={heroImage}
                   alt={schoolName}
                   className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-700"
                 />
                 {/* gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-60 group-hover:opacity-70 transition-opacity duration-500" />
                 {/* bottom label */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
                   <div className="flex items-end justify-between">
@@ -150,6 +151,7 @@ export default function Home() {
 
         {/* ── Quote Banner ── */}
         <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-white py-20 text-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_8s_linear_infinite]" />
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/greek-vase.png')] opacity-[0.07]" />
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/2 translate-y-1/2" />
