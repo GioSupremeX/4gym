@@ -71,6 +71,13 @@ export const comments = pgTable("comments", {
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
+export const subscribers = pgTable("subscribers", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  active: text("active").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const reportedComments = pgTable("reported_comments", {
   id: serial("id").primaryKey(),
   commentId: integer("comment_id").notNull(),
@@ -82,6 +89,7 @@ export const insertArticleSchema = createInsertSchema(articles).omit({ id: true,
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, publishedAt: true });
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, publishedAt: true });
+export const insertSubscriberSchema = createInsertSchema(subscribers).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reportedComments).omit({ id: true, reportedAt: true });
 
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
@@ -92,6 +100,8 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type ReportedComment = typeof reportedComments.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+export type Subscriber = typeof subscribers.$inferSelect;
+export type InsertSubscriber = z.infer<typeof insertSubscriberSchema>;
 
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;

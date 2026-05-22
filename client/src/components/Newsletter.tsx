@@ -3,11 +3,30 @@ import { Mail, Send, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 
 export function Newsletter() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+
+  const subscribe = useMutation({
+    mutationFn: async (emailValue: string) => {
+      const res = await apiRequest("POST", "/api/subscribers", { email: emailValue });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Επιτυχής εγγραφή!", description: "Θα λαμβάνετε νέα του σχολείου." });
+      setEmail("");
+    },
+    onError: (err: any) => {
+      if (err.message?.includes("409") || err.message?.includes("already subscribed")) {
+        toast({ title: "Το email υπάρχει ήδη", description: "Έχετε εγγραφεί με αυτό το email.", variant: "destructive" });
+      } else {
+        toast({ title: "Απέτυχε", description: "Δοκιμάστε ξανά αργότερα.", variant: "destructive" });
+      }
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,13 +34,7 @@ export function Newsletter() {
       toast({ title: "Μη έγκυρο email", variant: "destructive" });
       return;
     }
-    setStatus("loading");
-    setTimeout(() => {
-      setStatus("success");
-      toast({ title: "Επιτυχής εγγραφή!", description: "Θα λαμβάνετε νέα του σχολείου." });
-      setEmail("");
-      setTimeout(() => setStatus("idle"), 3000);
-    }, 1200);
+    subscribe.mutate(email);
   };
 
   return (
@@ -36,8 +49,8 @@ export function Newsletter() {
             <p className="text-muted-foreground">Εγγραφείτε για να λαμβάνετε τις τελευταίες ανακοινώσεις και νέα του σχολείου.</p>
           </div>
 
-          {status === "success" ? (
-            <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold py-4">
+          {subscribe.isSuccess ? (
+            <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold py-4 animate-fade-up">
               <CheckCircle className="h-5 w-5" />
               <span>Ευχαριστούμε! Θα λαμβάνετε νέα μας.</span>
             </div>
@@ -49,10 +62,10 @@ export function Newsletter() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="flex-1 h-12"
-                disabled={status === "loading"}
+                disabled={subscribe.isPending}
               />
-              <Button type="submit" disabled={status === "loading"} className="h-12 px-6 gap-2">
-                {status === "loading" ? (
+              <Button type="submit" disabled={subscribe.isPending} className="h-12 px-6 gap-2">
+                {subscribe.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />

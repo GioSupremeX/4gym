@@ -105,14 +105,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
       <Navigation />
       <main className="flex-grow container mx-auto px-4 py-12 animate-fade-up">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-            <Link href="/" className="hover:text-primary transition-colors">Αρχική</Link>
-            <span>/</span>
-            <Link href="/articles" className="hover:text-primary transition-colors">Όλα τα Νέα</Link>
-            <span>/</span>
-            <span className="text-foreground font-medium truncate max-w-xs">{article.title}</span>
-          </div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <Button variant="ghost" asChild className="hover:text-primary transition-colors">
               <Link href={article.category === "general" ? "/articles" : "/"}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή

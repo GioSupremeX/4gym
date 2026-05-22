@@ -1,4 +1,4 @@
-import { articles, siteSettings, announcements, comments, reportedComments, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport } from "@shared/schema";
+import { articles, siteSettings, announcements, comments, reportedComments, subscribers, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -28,6 +28,11 @@ export interface IStorage {
   getReportedComments(): Promise<(ReportedComment & { comment: Comment })[]>;
   reportComment(report: InsertReport): Promise<ReportedComment>;
   deleteReport(id: number): Promise<void>;
+
+  // Subscribers
+  getSubscribers(): Promise<Subscriber[]>;
+  createSubscriber(sub: InsertSubscriber): Promise<Subscriber>;
+  deleteSubscriber(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -117,6 +122,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReport(id: number): Promise<void> {
     await db.delete(reportedComments).where(eq(reportedComments.id, id));
+  }
+
+  async getSubscribers(): Promise<Subscriber[]> {
+    return await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+  }
+
+  async createSubscriber(sub: InsertSubscriber): Promise<Subscriber> {
+    const [created] = await db.insert(subscribers).values(sub).returning();
+    return created;
+  }
+
+  async deleteSubscriber(id: number): Promise<void> {
+    await db.delete(subscribers).where(eq(subscribers.id, id));
   }
 }
 

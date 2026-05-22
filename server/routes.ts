@@ -1,7 +1,7 @@
 import { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema } from "@shared/schema";
+import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema } from "@shared/schema";
 import { api } from "@shared/routes";
 
 export async function registerRoutes(server: Server, app: Express): Promise<void> {
@@ -107,6 +107,31 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
 
   app.delete("/api/comments/reports/:id", async (req: Request, res: Response) => {
     await storage.deleteReport(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // Subscribers
+  app.get("/api/subscribers", async (_req: Request, res: Response) => {
+    const subs = await storage.getSubscribers();
+    res.json(subs);
+  });
+
+  app.post("/api/subscribers", async (req: Request, res: Response) => {
+    const parsed = insertSubscriberSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    try {
+      const sub = await storage.createSubscriber(parsed.data);
+      res.json(sub);
+    } catch (e: any) {
+      if (e.message?.includes("duplicate") || e.code === "23505") {
+        return res.status(409).json({ message: "Email already subscribed" });
+      }
+      throw e;
+    }
+  });
+
+  app.delete("/api/subscribers/:id", async (req: Request, res: Response) => {
+    await storage.deleteSubscriber(Number(req.params.id));
     res.status(204).end();
   });
 }

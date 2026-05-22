@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Announcement, ReportedComment } from "@shared/schema";
+import { Announcement, ReportedComment, Subscriber } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -162,6 +162,25 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: subscribers, isLoading: subsLoading } = useQuery<Subscriber[]>({
+    queryKey: ["/api/subscribers"],
+    enabled: isAuthenticated,
+  });
+
+  const deleteSubscriber = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/subscribers/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete subscriber");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
+      toast({ title: "Επιτυχία", description: "Ο εγγεγραμμένος διαγράφηκε." });
+    },
+    onError: () => {
+      toast({ title: "Σφάλμα", description: "Αποτυχία διαγραφής.", variant: "destructive" });
+    },
+  });
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const files = event.target.files;
     if (!files) return;
@@ -245,6 +264,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>
             <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
             <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
+            <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stats">
@@ -744,6 +764,48 @@ export default function AdminDashboard() {
                           </div>
                         </CardContent>
                       </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="subscribers">
+            <Card className="border-2 border-primary/10 shadow-lg">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <Users className="h-5 w-5" /> Εγγεγραμμένοι ({subscribers?.length || 0})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {subsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground animate-pulse">Φόρτωση εγγραφών...</div>
+                ) : !subscribers || subscribers.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground italic">Δεν υπάρχουν εγγεγραμμένοι.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {subscribers.map((sub) => (
+                      <div key={sub.id} className="flex items-center justify-between p-4 border rounded-xl bg-background hover:shadow-md transition-all">
+                        <div>
+                          <p className="font-bold text-foreground">{sub.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(sub.createdAt).toLocaleDateString("el-GR")}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            if (window.confirm("Θέλετε να διαγράψετε αυτό το email;")) {
+                              deleteSubscriber.mutate(sub.id);
+                            }
+                          }}
+                          disabled={deleteSubscriber.isPending}
+                        >
+                          {deleteSubscriber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 )}
