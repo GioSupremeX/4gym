@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft, Newspaper } from "lucide-react";
+import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft, Newspaper, Clock } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
 import { Announcement, Article } from "@shared/schema";
@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CommentSection } from "@/components/CommentSection";
+import { SocialShare } from "@/components/SocialShare";
+import { ReadingProgress } from "@/components/ReadingProgress";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
@@ -99,26 +101,49 @@ export function ArticlePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
+      <ReadingProgress />
       <Navigation />
       <main className="flex-grow container mx-auto px-4 py-12 animate-fade-up">
         <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" asChild className="mb-8 hover:text-primary transition-colors">
-            <Link href={article.category === "general" ? "/articles" : "/"}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+            <Link href="/" className="hover:text-primary transition-colors">Αρχική</Link>
+            <span>/</span>
+            <Link href="/articles" className="hover:text-primary transition-colors">Όλα τα Νέα</Link>
+            <span>/</span>
+            <span className="text-foreground font-medium truncate max-w-xs">{article.title}</span>
+          </div>
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="ghost" asChild className="hover:text-primary transition-colors">
+              <Link href={article.category === "general" ? "/articles" : "/"}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή
+              </Link>
+            </Button>
+            <SocialShare title={article.title} url={`/articles/${article.id}`} />
+          </div>
 
           <Card className="shadow-2xl border-2 border-primary/10 rounded-3xl overflow-hidden mb-12">
             <CardHeader className="bg-primary/5 border-b border-primary/10 p-8 md:p-12">
-              <div className="flex items-center gap-3 text-primary mb-4 font-bold uppercase tracking-widest text-sm">
-                <FileText className="h-5 w-5" />
-                <span>{article.category === "general" ? "Νέα & Ανακοινώσεις" : article.category}</span>
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${CATEGORY_COLORS[article.category] || CATEGORY_COLORS.general}`}>
+                  {CATEGORY_LABELS[article.category] || article.category}
+                </span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                  {new Date(article.publishedAt).toLocaleDateString("el-GR", { day: '2-digit', month: 'long', year: 'numeric' })}
+                </span>
               </div>
               <CardTitle className="text-4xl md:text-5xl font-display font-bold text-primary leading-tight">
                 {article.title}
               </CardTitle>
-              <div className="mt-6 flex items-center text-muted-foreground font-medium">
-                {new Date(article.publishedAt).toLocaleDateString("el-GR", { day: '2-digit', month: 'long', year: 'numeric' })}
+              <div className="mt-6 flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  {Math.ceil(article.content.split(/\s+/).length / 200)} λεπτά ανάγνωσης
+                </span>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                <span className="flex items-center gap-1.5">
+                  <FileText className="h-4 w-4" />
+                  {article.content.split(/\s+/).length} λέξεις
+                </span>
               </div>
             </CardHeader>
             <CardContent className="p-8 md:p-12">
@@ -143,17 +168,25 @@ export function ArticlePage({ params }: { params: { id: string } }) {
           <CommentSection articleId={article.id} commentsEnabled={settings?.commentsEnabled !== "false"} />
 
           {recommendations.length > 0 && (
-            <div className="space-y-6 mt-12">
-              <h3 className="text-2xl font-display font-bold text-primary">Διαβάστε επίσης</h3>
+            <div className="space-y-6 mt-16">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-8 bg-gradient-to-b from-primary to-primary/40 rounded-full" />
+                <h3 className="text-2xl font-display font-bold text-primary">Διαβάστε επίσης</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {recommendations.map((rec) => (
-                  <Link key={rec.id} href={`/articles/${rec.id}`}>
-                    <Card className="cursor-pointer hover:shadow-xl transition-all h-full border-2 border-primary/5 hover:border-primary/20">
-                      <CardContent className="p-4 space-y-3">
-                        {rec.imageUrls?.[0] && (
-                          <img src={rec.imageUrls[0]} alt="" className="w-full aspect-video object-cover rounded-lg" />
-                        )}
-                        <h4 className="font-bold line-clamp-2 leading-tight">{rec.title}</h4>
+                {recommendations.map((rec, idx) => (
+                  <Link key={rec.id} href={`/articles/${rec.id}`} className="animate-fade-up" style={{ animationDelay: `${idx * 150}ms` }}>
+                    <Card className="cursor-pointer hover:shadow-xl transition-all h-full border-2 border-primary/5 hover:border-primary/20 overflow-hidden group">
+                      {rec.imageUrls?.[0] && (
+                        <div className="aspect-video overflow-hidden">
+                          <img src={rec.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        </div>
+                      )}
+                      <CardContent className="p-4 space-y-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${CATEGORY_COLORS[rec.category] || CATEGORY_COLORS.general}`}>
+                          {CATEGORY_LABELS[rec.category] || rec.category}
+                        </span>
+                        <h4 className="font-bold line-clamp-2 leading-tight text-sm">{rec.title}</h4>
                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
                           {new Date(rec.publishedAt).toLocaleDateString("el-GR")}
                         </p>

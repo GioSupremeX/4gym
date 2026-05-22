@@ -76,14 +76,15 @@ export function CalendarSection() {
 
           {/* Calendar */}
           <div className="bg-white dark:bg-background rounded-3xl border-2 border-primary/15 shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-primary to-primary/80 px-6 py-4">
-              <div className="flex items-center gap-3 text-white">
-                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                  <CalendarIcon className="h-5 w-5" />
+            {/* 🔹 Clean white header with dark text for contrast */}
+            <div className="bg-white dark:bg-background px-6 py-4 border-b-2 border-primary/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md">
+                  <CalendarIcon className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-lg leading-none">Ημερολόγιο</h3>
-                  <p className="text-white/70 text-xs mt-0.5">Σχολικός Μήνας</p>
+                  <h3 className="font-display font-bold text-xl leading-none text-foreground">Ημερολόγιο</h3>
+                  <p className="text-muted-foreground text-xs mt-1 font-medium">Σχολικός Προγραμματισμός</p>
                 </div>
               </div>
             </div>
