@@ -17,8 +17,12 @@ export default function Home() {
   const { data: announcements } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
   });
-  const currentYear = new Date().getFullYear();
-  const schoolYearEnd = currentYear + 1;
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0=Jan ... 5=Jun, 6=Jul
+  const currentYear = now.getFullYear();
+  // School year changes after June (month 5). Before July, show previous year as start.
+  const schoolYearStart = currentMonth >= 5 ? currentYear : currentYear - 1;
+  const schoolYearEnd = schoolYearStart + 1;
 
   if (isLoading) {
     return (
@@ -72,7 +76,7 @@ export default function Home() {
         )}
 
         {/* ── Hero Section ── */}
-        <section className="container mx-auto px-4 py-10 sm:px-6 lg:px-8">
+        <section className="container mx-auto px-4 py-10 sm:px-6 lg:px-8 animate-fade-up">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
 
             {/* Left — hero */}
@@ -80,7 +84,7 @@ export default function Home() {
               <div className="text-center space-y-5">
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-primary/20 animate-pulse">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Σχολικό Έτος {currentYear}–{schoolYearEnd}
+                  Σχολικό Έτος {schoolYearStart}–{schoolYearEnd}
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-display font-bold text-primary tracking-tight leading-tight">
                   {aboutTitle}
@@ -149,10 +153,12 @@ export default function Home() {
         </section>
 
         {/* ── Calendar & Stats ── */}
-        <CalendarSection />
+        <div className="animate-fade-up delay-200">
+          <CalendarSection />
+        </div>
 
         {/* ── Quote Banner ── */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-white py-20 text-center">
+        <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-white py-20 text-center animate-fade-up delay-300">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_8s_linear_infinite]" />
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/greek-vase.png')] opacity-[0.07]" />
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />

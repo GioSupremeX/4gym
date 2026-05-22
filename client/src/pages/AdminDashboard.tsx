@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [editingArticle, setEditingArticle] = useState<any>(null);
   const [newArticleImages, setNewArticleImages] = useState<string[]>([]);
   const [editArticleImages, setEditArticleImages] = useState<string[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateSettings = useMutation({
@@ -615,59 +616,13 @@ export default function AdminDashboard() {
                         <h4 className="font-bold">{a.title}</h4>
                       </div>
                       <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => {
-                              setEditingArticle(a);
-                              setEditArticleImages(a.imageUrls || []);
-                            }}>
-                              <Edit2 className="h-5 w-5" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={(e) => {
-                              e.preventDefault();
-                              const formData = new FormData(e.currentTarget);
-                              updateArticle.mutate({ id: a.id, ...Object.fromEntries(formData), imageUrls: editArticleImages });
-                            }} className="space-y-4">
-                              <Input name="title" defaultValue={a.title} placeholder="Τίτλος" required />
-                              <div className="p-4 border rounded-xl bg-muted/20">
-                                <div className="grid grid-cols-4 gap-2 mb-4">
-                                  {editArticleImages.map((img, i) => (
-                                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
-                                      <img src={img} className="object-cover w-full h-full" />
-                                      <button type="button" onClick={() => setEditArticleImages(p => p.filter((_, idx) => idx !== i))} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center text-white"><X/></button>
-                                    </div>
-                                  ))}
-                                  <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground"><Upload/><span className="text-[10px]">Import</span></button>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Input id={`link-edit-${a.id}`} placeholder="URL Εικόνας" />
-                                  <Button type="button" onClick={() => { const i = document.getElementById(`link-edit-${a.id}`) as HTMLInputElement; if(i.value){setEditArticleImages(p=>[...p, i.value]); i.value='';} }}>Add</Button>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κατηγορία</label>
-                                <select name="category" defaultValue={a.category || "general"} className="w-full p-2 border rounded-md bg-background text-foreground">
-                                  <option value="general">Γενικά</option>
-                                  <option value="teachers">Εκπαιδευτικό Προσωπικό</option>
-                                  <option value="heads">Υπεύθυνοι Τμημάτων</option>
-                                  <option value="schedule">Ωράριο</option>
-                                  <option value="rules">Κανονισμός</option>
-                                  <option value="evaluation">Αυτοαξιολόγηση</option>
-                                  <option value="students">Μαθητές</option>
-                                  <option value="activities">Δραστηριότητες</option>
-                                  <option value="contact">Επικοινωνία</option>
-                                </select>
-                              </div>
-                              <Textarea name="content" defaultValue={a.content} placeholder="Περιεχόμενο" rows={8} required />
-                              <Button type="submit" className="w-full" disabled={updateArticle.isPending}>Ενημέρωση</Button>
-                            </form>
-                          </DialogContent>
-                        </Dialog>
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setEditingArticle(a);
+                          setEditArticleImages(a.imageUrls || []);
+                          setEditDialogOpen(true);
+                        }}>
+                          <Edit2 className="h-5 w-5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteArticle.mutate(a.id)}>
                           <Trash2 className="h-5 w-5" />
                         </Button>
@@ -745,6 +700,55 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Global Edit Article Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) { setEditingArticle(null); setEditArticleImages([]); } }}>
+        <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            updateArticle.mutate({ id: editingArticle?.id, ...Object.fromEntries(formData), imageUrls: editArticleImages });
+            setEditDialogOpen(false);
+          }} className="space-y-4">
+            <Input name="title" defaultValue={editingArticle?.title || ""} placeholder="Τίτλος" required />
+            <div className="p-4 border rounded-xl bg-muted/20">
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {editArticleImages.map((img: string, i: number) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
+                    <img src={img} className="object-cover w-full h-full" />
+                    <button type="button" onClick={() => setEditArticleImages(p => p.filter((_:any, idx: number) => idx !== i))} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center text-white"><X/></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground"><Upload/><span className="text-[10px]">Import</span></button>
+                <input type="file" multiple accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => handleFileUpload(e, true)} />
+              </div>
+              <div className="flex gap-2">
+                <Input id="link-edit-global" placeholder="URL Εικόνας" />
+                <Button type="button" onClick={() => { const i = document.getElementById('link-edit-global') as HTMLInputElement; if(i.value){setEditArticleImages(p=>[...p, i.value]); i.value='';} }}>Add</Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κατηγορία</label>
+              <select name="category" defaultValue={editingArticle?.category || "general"} className="w-full p-2 border rounded-md bg-background text-foreground">
+                <option value="general">Γενικά</option>
+                <option value="teachers">Εκπαιδευτικό Προσωπικό</option>
+                <option value="heads">Υπεύθυνοι Τμημάτων</option>
+                <option value="schedule">Ωράριο</option>
+                <option value="rules">Κανονισμός</option>
+                <option value="evaluation">Αυτοαξιολόγηση</option>
+                <option value="students">Μαθητές</option>
+                <option value="activities">Δραστηριότητες</option>
+                <option value="contact">Επικοινωνία</option>
+              </select>
+            </div>
+            <Textarea name="content" defaultValue={editingArticle?.content || ""} placeholder="Περιεχόμενο" rows={8} required />
+            <Button type="submit" className="w-full" disabled={updateArticle.isPending}>Ενημέρωση</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
