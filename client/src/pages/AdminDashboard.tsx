@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [newArticleImages, setNewArticleImages] = useState<string[]>([]);
   const [editArticleImages, setEditArticleImages] = useState<string[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [articleSearch, setArticleSearch] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateSettings = useMutation({
@@ -598,12 +599,22 @@ export default function AdminDashboard() {
 
           <TabsContent value="articles">
             <Card className="border-2 border-primary/10 shadow-lg">
-              <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between">
+              <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between flex-wrap gap-3">
                 <CardTitle className="flex items-center gap-2 text-primary font-display">
                   <Newspaper className="h-5 w-5" /> Articles
                 </CardTitle>
-                <Dialog onOpenChange={(open) => !open && setNewArticleImages([])}>
-                  <DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4"/> Νέο</Button></DialogTrigger>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Αναζήτηση άρθρων..."
+                      value={articleSearch}
+                      onChange={(e) => setArticleSearch(e.target.value)}
+                      className="pl-9 h-9 w-48"
+                    />
+                  </div>
+                  <Dialog onOpenChange={(open) => !open && setNewArticleImages([])}>
+                    <DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4"/> Νέο</Button></DialogTrigger>
                   <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
                     <form onSubmit={(e) => {
                       e.preventDefault();
@@ -646,11 +657,12 @@ export default function AdminDashboard() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {articles?.map(a => (
-                    <div key={a.id} className="flex items-center justify-between p-4 border rounded-xl bg-background">
+                  {articles?.filter((a: any) => a.title.toLowerCase().includes(articleSearch.toLowerCase())).map(a => (
+                    <div key={a.id} className="flex items-center justify-between p-4 border rounded-xl bg-background hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
                       <div className="flex items-center gap-4">
                         {a.imageUrls?.[0] ? <img src={a.imageUrls[0]} className="w-12 h-12 rounded object-cover" /> : <div className="w-12 h-12 bg-muted rounded flex items-center justify-center"><ImageIcon/></div>}
                         <h4 className="font-bold">{a.title}</h4>

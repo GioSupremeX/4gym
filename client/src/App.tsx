@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import AdminDashboard from "@/pages/AdminDashboard";
 import { AboutPage, StudentsPage, ActivitiesPage, AnnouncementsPage, ContactPage, CategoryPage, ArticlePage, AllArticlesPage } from "@/pages/ContentPages";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 function Router() {
   return (
@@ -46,6 +47,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <ScrollToTop />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

@@ -14,7 +14,7 @@ export function GenericPage({ title, description, icon: Icon, children }: { titl
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-primary/5 font-body">
       <Navigation />
-      <main className="flex-grow container mx-auto px-4 py-8 md:py-16">
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-16 animate-fade-up">
         <Card className="max-w-4xl mx-auto paper-shadow-lg border-2 border-primary/15 rounded-3xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary/8 to-primary/5 border-b border-primary/10 text-center py-16 md:py-20">
             <div className="mx-auto w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center mb-8 shadow-lg">
@@ -100,7 +100,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
       <Navigation />
-      <main className="flex-grow container mx-auto px-4 py-12">
+      <main className="flex-grow container mx-auto px-4 py-12 animate-fade-up">
         <div className="max-w-4xl mx-auto">
           <Button variant="ghost" asChild className="mb-8 hover:text-primary transition-colors">
             <Link href={article.category === "general" ? "/articles" : "/"}>
@@ -125,8 +125,8 @@ export function ArticlePage({ params }: { params: { id: string } }) {
               {article.imageUrls && article.imageUrls.length > 0 && (
                 <div className="grid grid-cols-1 gap-8 mb-12">
                   {article.imageUrls.map((url, i) => (
-                    <div key={i} className="rounded-2xl overflow-hidden shadow-lg border-4 border-white">
-                      <img src={url} alt="" className="w-full h-auto object-cover max-h-[600px]" />
+                    <div key={i} className="rounded-2xl overflow-hidden shadow-lg border-4 border-white group cursor-zoom-in">
+                      <img src={url} alt="" className="w-full h-auto object-cover max-h-[600px] group-hover:scale-105 transition-transform duration-700" onClick={() => window.open(url, '_blank')} />
                     </div>
                   ))}
                 </div>
@@ -140,7 +140,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
           </Card>
 
           {/* Comments Section */}
-          <CommentSection articleId={article.id} commentsEnabled={settings?.commentsEnabled || "true"} />
+          <CommentSection articleId={article.id} commentsEnabled={settings?.commentsEnabled !== "false"} />
 
           {recommendations.length > 0 && (
             <div className="space-y-6 mt-12">
@@ -171,6 +171,20 @@ export function ArticlePage({ params }: { params: { id: string } }) {
   );
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  general: "Γενικά", teachers: "Εκπαιδευτικοί", heads: "Διεύθυνση",
+  schedule: "Ωράριο", rules: "Κανονισμός", evaluation: "Αξιολόγηση",
+  students: "Μαθητές", activities: "Δραστηριότητες", contact: "Επικοινωνία"
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  general: "bg-blue-100 text-blue-700", teachers: "bg-purple-100 text-purple-700",
+  heads: "bg-red-100 text-red-700", schedule: "bg-green-100 text-green-700",
+  rules: "bg-orange-100 text-orange-700", evaluation: "bg-teal-100 text-teal-700",
+  students: "bg-pink-100 text-pink-700", activities: "bg-yellow-100 text-yellow-700",
+  contact: "bg-gray-100 text-gray-700"
+};
+
 export function AllArticlesPage() {
   const { data: articles, isLoading } = useQuery<Article[]>({
     queryKey: ["/api/articles"],
@@ -178,22 +192,28 @@ export function AllArticlesPage() {
 
   if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
 
-  const generalArticles = articles?.filter(a => a.category === "general") || [];
+  const allSorted = [...(articles || [])].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
   return (
     <GenericPage title="Όλα τα Νέα" description="Δείτε όλα τα πρόσφατα νέα και ανακοινώσεις του σχολείου μας." icon={Newspaper}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        {generalArticles.map((art) => (
-          <Link key={art.id} href={`/articles/${art.id}`}>
+        {allSorted.map((art, idx) => (
+          <Link key={art.id} href={`/articles/${art.id}`} className="animate-fade-up" style={{ animationDelay: `${idx * 100}ms` }}>
             <Card className="cursor-pointer hover:shadow-2xl transition-all border-2 border-primary/5 hover:border-primary/20 rounded-3xl overflow-hidden h-full flex flex-col group">
               {art.imageUrls?.[0] && (
-                <div className="aspect-video overflow-hidden">
-                  <img src={art.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="aspect-video overflow-hidden relative">
+                  <img src={art.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               )}
               <CardHeader className="flex-grow">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                  {new Date(art.publishedAt).toLocaleDateString("el-GR")}
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${CATEGORY_COLORS[art.category] || CATEGORY_COLORS.general}`}>
+                    {CATEGORY_LABELS[art.category] || art.category}
+                  </span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    {new Date(art.publishedAt).toLocaleDateString("el-GR")}
+                  </span>
                 </div>
                 <CardTitle className="text-2xl font-display font-bold text-primary leading-tight group-hover:text-primary transition-colors">
                   {art.title}
@@ -261,7 +281,7 @@ function ArticleCard({ article }: { article: Article }) {
           {article.content}
         </p>
         <Link href={`/articles/${article.id}`}>
-          <Button variant="link" className="mt-4 p-0 h-auto font-bold text-primary">Διαβάστε περισσότερα...</Button>
+          <span className="mt-4 inline-block font-bold text-primary hover:underline cursor-pointer">Διαβάστε περισσότερα...</span>
         </Link>
       </CardContent>
     </Card>

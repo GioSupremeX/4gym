@@ -11,7 +11,7 @@ import { MessageSquare, Flag, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
 
-export function CommentSection({ articleId, commentsEnabled }: { articleId: number; commentsEnabled: boolean }) {
+export function CommentSection({ articleId, commentsEnabled }: { articleId: number; commentsEnabled: boolean | string }) {
   const { toast } = useToast();
   const [authorName, setAuthorName] = useState("");
   const [authorEmail, setAuthorEmail] = useState("");
@@ -69,7 +69,7 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
   if (commentsEnabled === "false") return null;
 
   return (
-    <Card className="mt-12 border-2 border-primary/10 shadow-lg">
+    <Card className="mt-12 border-2 border-primary/10 shadow-lg animate-fade-up">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="flex items-center gap-2 text-primary font-display">
           <MessageSquare className="h-5 w-5" />
