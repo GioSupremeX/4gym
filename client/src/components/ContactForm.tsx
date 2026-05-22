@@ -17,7 +17,7 @@ export function ContactForm() {
 
   const sendMessage = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/contact", { name, email, subject, message });
+      const res = await apiRequest("POST", "/api/contacts", { name, email, subject, message });
       return res.json();
     },
     onSuccess: () => {

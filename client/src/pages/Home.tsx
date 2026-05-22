@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Bell, ChevronRight, Sparkles } from "lucide-react";
-import { QuickLinks } from "@/components/QuickLinks";
 import { Newsletter } from "@/components/Newsletter";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
@@ -49,8 +48,6 @@ export default function Home() {
       <Navigation />
 
       <main className="flex-grow">
-
-        <QuickLinks />
 
         {/* ── Announcements ticker (if any) ── */}
         {recentAnnouncements.length > 0 && (
