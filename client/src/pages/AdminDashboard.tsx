@@ -13,7 +13,7 @@ import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Announcement, ReportedComment, Subscriber } from "@shared/schema";
+import { Announcement, ReportedComment, Subscriber, Contact } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -181,6 +181,25 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: contactsList, isLoading: contactsLoading } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts"],
+    enabled: isAuthenticated,
+  });
+
+  const deleteContact = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete contact");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({ title: "Επιτυχία", description: "Το μήνυμα διαγράφηκε." });
+    },
+    onError: () => {
+      toast({ title: "Σφάλμα", description: "Αποτυχία διαγραφής.", variant: "destructive" });
+    },
+  });
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const files = event.target.files;
     if (!files) return;
@@ -265,6 +284,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
             <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
             <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>
+            <TabsTrigger value="contacts" className="flex-1 min-w-[100px]">Μηνύματα</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stats">
@@ -806,6 +826,45 @@ export default function AdminDashboard() {
                           {deleteSubscriber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contacts">
+            <Card className="border-2 border-primary/10 shadow-lg">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <Mail className="h-5 w-5" /> Μηνύματα ({contactsList?.length || 0})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {contactsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground animate-pulse">Φόρτωση μηνυμάτων...</div>
+                ) : !contactsList || contactsList.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground italic">Δεν υπάρχουν μηνύματα.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {contactsList.map((msg) => (
+                      <Card key={msg.id} className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                        <CardContent className="pt-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-foreground">{msg.name}</p>
+                              <p className="text-xs text-muted-foreground">{msg.email} · {new Date(msg.createdAt).toLocaleDateString("el-GR")}</p>
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={() => {
+                              if (window.confirm("Θέλετε να διαγράψετε το μήνυμα;")) deleteContact.mutate(msg.id);
+                            }} disabled={deleteContact.isPending}>
+                              {deleteContact.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          {msg.subject && <p className="text-sm font-semibold text-primary">Θέμα: {msg.subject}</p>}
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{msg.message}</p>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}

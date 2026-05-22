@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Users, Trophy, MessageSquare, Bell, FileText, ArrowLeft, Newspaper, Clock } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Announcement, Article } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "wouter";
@@ -11,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { CommentSection } from "@/components/CommentSection";
 import { SocialShare } from "@/components/SocialShare";
 import { ReadingProgress } from "@/components/ReadingProgress";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { SeoHead } from "@/components/SeoHead";
+import { Printer } from "lucide-react";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
@@ -93,6 +97,8 @@ export function ArticlePage({ params }: { params: { id: string } }) {
     queryKey: ["/api/articles"],
   });
   const { data: settings } = useSettings();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   if (isLoading) return <div className="p-20 text-center font-display text-primary animate-pulse">Φόρτωση...</div>;
   if (!article) return <div className="p-20 text-center font-display text-destructive">Το άρθρο δεν βρέθηκε.</div>;
@@ -100,19 +106,27 @@ export function ArticlePage({ params }: { params: { id: string } }) {
   const recommendations = allArticles?.filter(a => a.id !== article.id).slice(0, 3) || [];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-body">
-      <ReadingProgress />
-      <Navigation />
-      <main className="flex-grow container mx-auto px-4 py-12 animate-fade-up">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <Button variant="ghost" asChild className="hover:text-primary transition-colors">
-              <Link href={article.category === "general" ? "/articles" : "/"}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή
-              </Link>
-            </Button>
-            <SocialShare title={article.title} url={`/articles/${article.id}`} />
-          </div>
+    <>
+      <SeoHead title={article.title} description={article.content.slice(0, 160)} />
+      <div className="min-h-screen flex flex-col bg-background font-body">
+        <ReadingProgress />
+        <Navigation />
+        <main className="flex-grow container mx-auto px-4 py-12 animate-fade-up">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <Button variant="ghost" asChild className="hover:text-primary transition-colors">
+                <Link href={article.category === "general" ? "/articles" : "/"}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή
+                </Link>
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 border-primary/20 hover:bg-primary/5">
+                  <Printer className="h-4 w-4" />
+                  <span className="hidden sm:inline">Εκτύπωση</span>
+                </Button>
+                <SocialShare title={article.title} url={`/articles/${article.id}`} />
+              </div>
+            </div>
 
           <Card className="shadow-2xl border-2 border-primary/10 rounded-3xl overflow-hidden mb-12">
             <CardHeader className="bg-primary/5 border-b border-primary/10 p-8 md:p-12">
@@ -144,7 +158,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
                 <div className="grid grid-cols-1 gap-8 mb-12">
                   {article.imageUrls.map((url, i) => (
                     <div key={i} className="rounded-2xl overflow-hidden shadow-lg border-4 border-white group cursor-zoom-in">
-                      <img src={url} alt="" className="w-full h-auto object-cover max-h-[600px] group-hover:scale-105 transition-transform duration-700" onClick={() => window.open(url, '_blank')} />
+                      <img src={url} alt="" className="w-full h-auto object-cover max-h-[600px] group-hover:scale-105 transition-transform duration-700" onClick={() => { setLightboxIndex(i); setLightboxOpen(true); }} />
                     </div>
                   ))}
                 </div>
@@ -193,7 +207,15 @@ export function ArticlePage({ params }: { params: { id: string } }) {
         </div>
       </main>
       <Footer />
-    </div>
+      </div>
+      {lightboxOpen && article.imageUrls && (
+        <ImageLightbox
+          images={article.imageUrls}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -385,6 +407,8 @@ export function AnnouncementsPage() {
   );
 }
 
+import { ContactForm } from "@/components/ContactForm";
+
 export function ContactPage() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
@@ -395,16 +419,29 @@ export function ContactPage() {
 
   return (
     <GenericPage title="Επικοινωνία" description={settings?.contactPageContent || ""} icon={Users}>
-      <div className="space-y-8 mt-12">
-        {articles && articles.length > 0 ? (
-          articles.map((art) => (
-            <ArticleCard key={art.id} article={art} />
-          ))
-        ) : (
-          <div className="text-center py-12 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/10">
-            <p className="text-muted-foreground italic">Δεν υπάρχουν ακόμα δημοσιεύσεις στην ενότητα Επικοινωνία.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-12 max-w-5xl mx-auto">
+        <ContactForm />
+        <div className="space-y-8">
+          <h3 className="text-xl font-display font-bold text-primary">Επισήμανση</h3>
+          <div className="space-y-4 text-muted-foreground leading-relaxed">
+            <p>Για την αμέση επικοινωνία με το σχολείο, συμπληρώστε τη φόρμα από την αριστερή. Θα σας απαντήσουμε το συντομότερο δυνατό.</p>
+            <p>Επίσης μπορείτε να επισκεφθείτε το σχολείο την ώρα λειτουργίας.</p>
           </div>
-        )}
+          {articles && articles.length > 0 && (
+            <div className="border-t pt-6">
+              <h4 className="font-bold mb-4">Σχετικά Άρθρα</h4>
+              <div className="space-y-3">
+                {articles.slice(0, 3).map((art) => (
+                  <Link key={art.id} href={`/articles/${art.id}`}>
+                    <div className="p-3 border rounded-xl bg-background hover:border-primary/20 transition-colors">
+                      <p className="font-bold text-sm">{art.title}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </GenericPage>
   );

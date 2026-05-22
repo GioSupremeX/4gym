@@ -1,7 +1,7 @@
 import { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema } from "@shared/schema";
+import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema, insertContactSchema } from "@shared/schema";
 import { api } from "@shared/routes";
 
 export async function registerRoutes(server: Server, app: Express): Promise<void> {
@@ -132,6 +132,24 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
 
   app.delete("/api/subscribers/:id", async (req: Request, res: Response) => {
     await storage.deleteSubscriber(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // Contact Messages
+  app.get("/api/contacts", async (_req: Request, res: Response) => {
+    const msgs = await storage.getContacts();
+    res.json(msgs);
+  });
+
+  app.post("/api/contacts", async (req: Request, res: Response) => {
+    const parsed = insertContactSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const msg = await storage.createContact(parsed.data);
+    res.json(msg);
+  });
+
+  app.delete("/api/contacts/:id", async (req: Request, res: Response) => {
+    await storage.deleteContact(Number(req.params.id));
     res.status(204).end();
   });
 }

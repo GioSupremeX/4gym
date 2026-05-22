@@ -1,4 +1,4 @@
-import { articles, siteSettings, announcements, comments, reportedComments, subscribers, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber } from "@shared/schema";
+import { articles, siteSettings, announcements, comments, reportedComments, subscribers, contacts, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber, type Contact, type InsertContact } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -33,6 +33,11 @@ export interface IStorage {
   getSubscribers(): Promise<Subscriber[]>;
   createSubscriber(sub: InsertSubscriber): Promise<Subscriber>;
   deleteSubscriber(id: number): Promise<void>;
+
+  // Contact Messages
+  getContacts(): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  deleteContact(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -135,6 +140,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSubscriber(id: number): Promise<void> {
     await db.delete(subscribers).where(eq(subscribers.id, id));
+  }
+
+  async getContacts(): Promise<Contact[]> {
+    return await db.select().from(contacts).orderBy(desc(contacts.createdAt));
+  }
+
+  async createContact(contact: InsertContact): Promise<Contact> {
+    const [created] = await db.insert(contacts).values(contact).returning();
+    return created;
+  }
+
+  async deleteContact(id: number): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
   }
 }
 

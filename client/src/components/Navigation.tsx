@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Menu, X, Settings, ChevronDown, ChevronRight, Sun, Moon } from "lucide-react";
+import { SiteSearch } from "@/components/SiteSearch";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -121,6 +122,7 @@ export function Navigation() {
             ))}
             
             <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border">
+              <SiteSearch />
               <Button
                 variant="ghost"
                 size="icon"
@@ -130,7 +132,6 @@ export function Navigation() {
               >
                 {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
-
               <Link href="/secret/edit" className="text-muted-foreground hover:text-primary transition-colors">
                 <Settings className="h-5 w-5" />
               </Link>
