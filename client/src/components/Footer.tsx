@@ -26,7 +26,7 @@ export function Footer() {
               {settings?.schoolName || "4ο Γυμνάσιο Ρόδου"}
             </h3>
             <p className="text-primary-foreground/85 max-w-xs leading-relaxed font-light">
-              Καζούλλειο Γυμνάσιο. Ένα σχολείο με ιστορία, όραμα και αγάπη για τη μάθηση.
+              {settings?.footerDescription || "Καζούλλειο Γυμνάσιο. Ένα σχολείο με ιστορία, όραμα και αγάπη για τη μάθηση."}
             </p>
           </div>
 
@@ -38,15 +38,15 @@ export function Footer() {
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-primary-foreground/85 hover:text-white smooth-transition group cursor-pointer">
                 <MapPin className="h-5 w-5 shrink-0 group-hover:scale-110 smooth-transition" />
-                <span>Πατριάρχου Αθηναγόρα 58, Ρόδος</span>
+                <span>{settings?.footerAddress || "Πατριάρχου Αθηναγόρα 58, Ρόδος"}</span>
               </div>
               <div className="flex items-center gap-3 text-primary-foreground/85 hover:text-white smooth-transition group cursor-pointer">
                 <Phone className="h-5 w-5 shrink-0 group-hover:scale-110 smooth-transition" />
-                <span>22410 22410</span>
+                <span>{settings?.footerPhone || "22410 22410"}</span>
               </div>
               <div className="flex items-center gap-3 text-primary-foreground/85 hover:text-white smooth-transition group cursor-pointer">
                 <Mail className="h-5 w-5 shrink-0 group-hover:scale-110 smooth-transition" />
-                <span>info@4gym-rodou.dod.sch.gr</span>
+                <span>{settings?.footerEmail || "info@4gym-rodou.dod.sch.gr"}</span>
               </div>
             </div>
           </div>

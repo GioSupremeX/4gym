@@ -34,6 +34,11 @@ export const siteSettings = pgTable("site_settings", {
   footerLink2Url: text("footer_link_2_url").notNull().default("#"),
   footerLink3Label: text("footer_link_3_label").notNull().default("Περιφερειακή Διεύθυνση"),
   footerLink3Url: text("footer_link_3_url").notNull().default("#"),
+  // Footer Contact Info
+  footerAddress: text("footer_address").notNull().default("Πατριάρχου Αθηναγόρα 58, Ρόδος"),
+  footerPhone: text("footer_phone").notNull().default("22410 22410"),
+  footerEmail: text("footer_email").notNull().default("info@4gym-rodou.dod.sch.gr"),
+  footerDescription: text("footer_description").notNull().default("Καζούλλειο Γυμνάσιο. Ένα σχολείο με ιστορία, όραμα και αγάπη για τη μάθηση."),
   // Page Content
   aboutPageContent: text("about_page_content").notNull().default("Το 4ο Γυμνάσιο Ρόδου - Καζούλλειο έχει μια μακρά ιστορία εκπαιδευτικής προσφοράς στην τοπική κοινωνία της Ρόδου."),
   studentsPageContent: text("students_page_content").notNull().default("Εδώ μπορείτε να βρείτε πληροφορίες για τις μαθητικές κοινότητες, το ωρολόγιο πρόγραμμα και άλλες χρήσιμες ανακοινώσεις για τους μαθητές μας."),

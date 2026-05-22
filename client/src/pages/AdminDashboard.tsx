@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone } from "lucide-react";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -554,6 +554,46 @@ export default function AdminDashboard() {
                 </form>
               </CardContent>
             </Card>
+
+            <Card className="border-2 border-primary/10 shadow-lg mt-8">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="flex items-center gap-2 text-primary font-display">
+                  <Mail className="h-5 w-5" /> Edit Footer Contact
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form
+                  className="space-y-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    updateSettings.mutate(Object.fromEntries(formData));
+                  }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Διεύθυνση</label>
+                      <Input name="footerAddress" defaultValue={settings?.footerAddress} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Email</label>
+                      <Input name="footerEmail" defaultValue={settings?.footerEmail} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Τηλέφωνο</label>
+                      <Input name="footerPhone" defaultValue={settings?.footerPhone} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Περιγραφή</label>
+                      <Input name="footerDescription" defaultValue={settings?.footerDescription} />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={updateSettings.isPending}>Save Footer Contact</Button>
+                </form>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="articles">
@@ -703,7 +743,7 @@ export default function AdminDashboard() {
 
       {/* Global Edit Article Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) { setEditingArticle(null); setEditArticleImages([]); } }}>
-        <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent key={editingArticle?.id || 'closed'} className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
           </DialogHeader>
