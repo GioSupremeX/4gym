@@ -102,7 +102,6 @@ export default function Home() {
 
               {/* Hero image */}
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20 group cursor-pointer card-hover smooth-transition">
-                <div className="absolute top-6 right-6 z-10 h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 animate-[float_6s_ease-in-out_infinite]" />
                 <img
                   src={heroImage}
                   alt={schoolName}
@@ -118,9 +117,6 @@ export default function Home() {
                       <p className="text-xl md:text-2xl font-display font-bold text-white drop-shadow-lg">
                         Ιστορικό Κτίριο – Σύγχρονη Εκπαίδευση
                       </p>
-                    </div>
-                    <div className="hidden md:flex h-12 w-12 bg-white/20 backdrop-blur-sm rounded-2xl items-center justify-center border border-white/30">
-                      <Sparkles className="h-6 w-6 text-white" />
                     </div>
                   </div>
                 </div>
