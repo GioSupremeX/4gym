@@ -10,12 +10,15 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Flag, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
+import { CaptchaField } from "@/components/Captcha";
 
 export function CommentSection({ articleId, commentsEnabled }: { articleId: number; commentsEnabled: boolean | string }) {
   const { toast } = useToast();
   const [authorName, setAuthorName] = useState("");
   const [authorEmail, setAuthorEmail] = useState("");
   const [content, setContent] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+  const [captchaValid, setCaptchaValid] = useState(false);
   const [reportReason, setReportReason] = useState<number | null>(null);
 
   const { data: comments = [], isLoading } = useQuery<Comment[]>({
@@ -34,9 +37,7 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
       return res.json();
     },
     onSuccess: () => {
-      setAuthorName("");
-      setAuthorEmail("");
-      setContent("");
+      setAuthorName(""); setAuthorEmail(""); setContent(""); setCaptchaValue(""); setCaptchaValid(false);
       queryClient.invalidateQueries({ queryKey: [`/api/articles/${articleId}/comments`] });
       toast({ title: "Επιτυχία", description: "Το σχόλιό σας δημοσιεύθηκε." });
     },
@@ -99,8 +100,15 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
             onChange={(e) => setContent(e.target.value)}
             className="border-2 min-h-[100px]"
           />
+          <CaptchaField value={captchaValue} onChange={setCaptchaValue} onValidate={setCaptchaValid} />
           <Button
-            onClick={() => createComment.mutate()}
+            onClick={() => {
+              if (!captchaValid) {
+                toast({ title: "Επαλήθευση", description: "Συμπληρώστε σωστά το αποτέλεσμα της μαθηματικής πράξης.", variant: "destructive" });
+                return;
+              }
+              createComment.mutate();
+            }}
             disabled={!authorName || !authorEmail || !content || createComment.isPending}
             className="w-full bg-primary hover:bg-primary/90"
           >

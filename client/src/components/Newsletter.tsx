@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { CaptchaField } from "@/components/Captcha";
 
 export function Newsletter() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+  const [captchaValid, setCaptchaValid] = useState(false);
 
   const subscribe = useMutation({
     mutationFn: async (emailValue: string) => {
@@ -17,7 +20,7 @@ export function Newsletter() {
     },
     onSuccess: () => {
       toast({ title: "Επιτυχής εγγραφή!", description: "Θα λαμβάνετε νέα του σχολείου." });
-      setEmail("");
+      setEmail(""); setCaptchaValue(""); setCaptchaValid(false);
     },
     onError: (err: any) => {
       if (err.message?.includes("409") || err.message?.includes("already subscribed")) {
@@ -32,6 +35,10 @@ export function Newsletter() {
     e.preventDefault();
     if (!email || !email.includes("@")) {
       toast({ title: "Μη έγκυρο email", variant: "destructive" });
+      return;
+    }
+    if (!captchaValid) {
+      toast({ title: "Επαλήθευση", description: "Συμπληρώστε σωστά το αποτέλεσμα της μαθηματικής πράξης.", variant: "destructive" });
       return;
     }
     subscribe.mutate(email);
@@ -55,23 +62,26 @@ export function Newsletter() {
               <span>Ευχαριστούμε! Θα λαμβάνετε νέα μας.</span>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex gap-3 max-w-md mx-auto">
-              <Input
-                type="email"
-                placeholder="το@email.σας.gr"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 h-12"
-                disabled={subscribe.isPending}
-              />
-              <Button type="submit" disabled={subscribe.isPending} className="h-12 px-6 gap-2">
-                {subscribe.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Εγγραφή
-              </Button>
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
+              <div className="flex gap-3">
+                <Input
+                  type="email"
+                  placeholder="το@email.σας.gr"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 h-12"
+                  disabled={subscribe.isPending}
+                />
+                <Button type="submit" disabled={subscribe.isPending} className="h-12 px-6 gap-2">
+                  {subscribe.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Εγγραφή
+                </Button>
+              </div>
+              <CaptchaField value={captchaValue} onChange={setCaptchaValue} onValidate={setCaptchaValid} />
             </form>
           )}
         </div>

@@ -9,6 +9,7 @@ import Home from "@/pages/Home";
 import AdminDashboard from "@/pages/AdminDashboard";
 import { AboutPage, StudentsPage, ActivitiesPage, AnnouncementsPage, ContactPage, CategoryPage, ArticlePage, AllArticlesPage } from "@/pages/ContentPages";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { AccessibilityMenu } from "@/components/AccessibilityMenu";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
+          <AccessibilityMenu />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

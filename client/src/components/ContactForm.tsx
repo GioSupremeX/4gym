@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { CaptchaField } from "@/components/Captcha";
 
 export function ContactForm() {
   const { toast } = useToast();
@@ -14,6 +15,8 @@ export function ContactForm() {
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+  const [captchaValid, setCaptchaValid] = useState(false);
 
   const sendMessage = useMutation({
     mutationFn: async () => {
@@ -22,7 +25,7 @@ export function ContactForm() {
     },
     onSuccess: () => {
       toast({ title: "Επιτυχία!", description: "Το μήνυμά σας στάλθηκε." });
-      setName(""); setEmail(""); setSubject(""); setMessage("");
+      setName(""); setEmail(""); setSubject(""); setMessage(""); setCaptchaValue(""); setCaptchaValid(false);
     },
     onError: () => {
       toast({ title: "Σφάλμα", description: "Δοκιμάστε ξανά.", variant: "destructive" });
@@ -33,6 +36,10 @@ export function ContactForm() {
     e.preventDefault();
     if (!name || !email || !message) {
       toast({ title: "Συμπληρώστε όλα τα πεδία", variant: "destructive" });
+      return;
+    }
+    if (!captchaValid) {
+      toast({ title: "Επαλήθευση", description: "Συμπληρώστε σωστά το αποτέλεσμα της μαθηματικής πράξης.", variant: "destructive" });
       return;
     }
     sendMessage.mutate();
@@ -70,6 +77,7 @@ export function ContactForm() {
             {sendMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : sendMessage.isSuccess ? <CheckCircle className="h-4 w-4" /> : <Send className="h-4 w-4" />}
             {sendMessage.isSuccess ? "Στάλθηκε" : "Αποστολή Μηνύματος"}
           </Button>
+          <CaptchaField value={captchaValue} onChange={setCaptchaValue} onValidate={setCaptchaValid} />
         </form>
       </CardContent>
     </Card>
