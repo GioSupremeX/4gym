@@ -41,8 +41,16 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
       queryClient.invalidateQueries({ queryKey: [`/api/articles/${articleId}/comments`] });
       toast({ title: "Επιτυχία", description: "Το σχόλιό σας δημοσιεύθηκε." });
     },
-    onError: () => {
-      toast({ title: "Σφάλμα", description: "Αποτυχία δημοσίευσης σχολίου.", variant: "destructive" });
+    onError: (err: any) => {
+      const msg = err.message || "";
+      if (msg.includes("403")) {
+        toast({ title: "Απενεργοποιημένο", description: "Τα σχόλια είναι προσωρινά απενεργοποιημένα.", variant: "destructive" });
+      } else if (msg.includes("429")) {
+        const secs = msg.match(/\d+/)?.[0] || "λίγα";
+        toast({ title: "Περιμένετε", description: `Περιμένετε ${secs} δευτερόλεπτα.` });
+      } else {
+        toast({ title: "Σφάλμα", description: "Αποτυχία δημοσίευσης σχολίου.", variant: "destructive" });
+      }
     },
   });
 
@@ -67,7 +75,21 @@ export function CommentSection({ articleId, commentsEnabled }: { articleId: numb
     },
   });
 
-  if (commentsEnabled === "false") return null;
+  if (commentsEnabled === "false") {
+    return (
+      <Card className="mt-12 border-2 border-amber-200 shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center gap-3 text-amber-700">
+            <ShieldAlert className="h-6 w-6" />
+            <div>
+              <p className="font-bold">Τα σχόλια είναι προσωρινά απενεργοποιημένα.</p>
+              <p className="text-sm">Η δυνατότητα σχολιασμού έχει απενεργοποιηθεί από τον διαχειριστή.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mt-12 border-2 border-primary/10 shadow-lg animate-fade-up">

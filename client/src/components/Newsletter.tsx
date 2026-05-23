@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Mail, Send, CheckCircle, Loader2 } from "lucide-react";
+import { Mail, Send, CheckCircle, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { CaptchaField } from "@/components/Captcha";
+import { useSettings } from "@/hooks/use-articles";
 
 export function Newsletter() {
   const { toast } = useToast();
+  const { data: settings } = useSettings();
   const [email, setEmail] = useState("");
   const [captchaValue, setCaptchaValue] = useState("");
   const [captchaValid, setCaptchaValid] = useState(false);
@@ -23,7 +25,13 @@ export function Newsletter() {
       setEmail(""); setCaptchaValue(""); setCaptchaValid(false);
     },
     onError: (err: any) => {
-      if (err.message?.includes("409") || err.message?.includes("already subscribed")) {
+      const msg = err.message || "";
+      if (msg.includes("403")) {
+        toast({ title: "Απενεργοποιημένο", description: "Η εγγραφή στο newsletter είναι προσωρινά απενεργοποιημένη.", variant: "destructive" });
+      } else if (msg.includes("429")) {
+        const secs = msg.match(/\d+/)?.[0] || "λίγα";
+        toast({ title: "Περιμένετε", description: `Περιμένετε ${secs} δευτερόλεπτα.` });
+      } else if (msg.includes("409") || msg.includes("already subscribed")) {
         toast({ title: "Το email υπάρχει ήδη", description: "Έχετε εγγραφεί με αυτό το email.", variant: "destructive" });
       } else {
         toast({ title: "Απέτυχε", description: "Δοκιμάστε ξανά αργότερα.", variant: "destructive" });
@@ -60,6 +68,13 @@ export function Newsletter() {
             <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold py-4 animate-fade-up">
               <CheckCircle className="h-5 w-5" />
               <span>Ευχαριστούμε! Θα λαμβάνετε νέα μας.</span>
+            </div>
+          ) : settings?.subscribeEnabled === "false" ? (
+            <div className="flex items-center justify-center gap-3 py-4 text-amber-700 bg-amber-50 border border-amber-200 rounded-xl max-w-md mx-auto">
+              <ShieldAlert className="h-5 w-5" />
+              <div className="text-left">
+                <p className="font-bold text-sm">Η εγγραφή στο newsletter είναι προσωρινά απενεργοποιημένη.</p>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">

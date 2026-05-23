@@ -1,10 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { SeoHead } from "@/components/SeoHead";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 font-body relative overflow-hidden">
+    <>
+      <SeoHead title="Σελίδα δεν βρέθηκε" description="Η σελίδα που ψάχνετε δεν υπάρχει." />
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 font-body relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]" />
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
@@ -31,6 +34,7 @@ export default function NotFound() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }

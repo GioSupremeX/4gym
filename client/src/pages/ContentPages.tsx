@@ -18,8 +18,10 @@ import { Printer } from "lucide-react";
 
 export function GenericPage({ title, description, icon: Icon, children }: { title: string; description: string; icon: any, children?: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-primary/5 font-body">
-      <Navigation />
+    <>
+      <SeoHead title={title} description={description?.slice(0, 160) || ""} />
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-primary/5 font-body">
+        <Navigation />
       <main className="flex-grow container mx-auto px-4 py-8 md:py-16 animate-fade-up">
         <Card className="max-w-4xl mx-auto paper-shadow-lg border-2 border-primary/15 rounded-3xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary/8 to-primary/5 border-b border-primary/10 text-center py-16 md:py-20">
@@ -41,7 +43,8 @@ export function GenericPage({ title, description, icon: Icon, children }: { titl
         </Card>
       </main>
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }
 

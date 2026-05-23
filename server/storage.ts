@@ -85,7 +85,15 @@ export class DatabaseStorage implements IStorage {
     if (!settings) {
       [settings] = await db.insert(siteSettings).values({ id: 1 }).returning();
     }
-    return settings;
+    // Merge defaults for any new columns that may be undefined on existing rows
+    const defaults = {
+      messagesEnabled: "true",
+      subscribeEnabled: "true",
+      commentCooldown: "60",
+      messageCooldown: "60",
+      subscribeCooldown: "300",
+    };
+    return { ...defaults, ...settings } as SiteSettings;
   }
 
   async updateSettings(update: UpdateSiteSettings): Promise<SiteSettings> {

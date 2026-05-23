@@ -59,6 +59,11 @@ export const siteSettings = pgTable("site_settings", {
   magazineButtonUrl: text("magazine_button_url").notNull().default("#"),
   magazineEnabled: text("magazine_enabled").notNull().default("true"),
   commentsEnabled: text("comments_enabled").notNull().default("true"),
+  messagesEnabled: text("messages_enabled").notNull().default("true"),
+  subscribeEnabled: text("subscribe_enabled").notNull().default("true"),
+  commentCooldown: text("comment_cooldown").notNull().default("60"),
+  messageCooldown: text("message_cooldown").notNull().default("60"),
+  subscribeCooldown: text("subscribe_cooldown").notNull().default("300"),
 });
 
 export const comments = pgTable("comments", {

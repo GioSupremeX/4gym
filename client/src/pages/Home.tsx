@@ -12,6 +12,7 @@ import { Newsletter } from "@/components/Newsletter";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
 import { Announcement } from "@shared/schema";
+import { SeoHead } from "@/components/SeoHead";
 
 export default function Home() {
   const { data: settings, isLoading } = useSettings();
@@ -44,8 +45,10 @@ export default function Home() {
   const recentAnnouncements = (announcements || []).slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navigation />
+    <>
+      <SeoHead title="Αρχική" description="Καλώς ήρθατε στο 4ο Γυμνάσιο Ρόδου – Καζούλλειο. Χώρος μάθησης, δημιουργίας και συνεργασίας." />
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navigation />
 
       <main className="flex-grow">
 
@@ -161,7 +164,7 @@ export default function Home() {
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/2 translate-y-1/2" />
           <div className="container mx-auto px-4 relative z-10">
-            <div className="text-6xl font-display text-white/85 leading-none mb-2 drop-shadow-lg">"</div>
+            <div className="text-6xl font-display text-white/85 leading-none mb-2 drop-shadow-lg">{'"'}</div>
             <h2 className="text-3xl md:text-4xl font-display font-bold italic leading-relaxed max-w-2xl mx-auto text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
               Γηράσκω δ' αεί πολλά διδασκόμενος
             </h2>
@@ -177,6 +180,7 @@ export default function Home() {
 
       <Newsletter />
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }

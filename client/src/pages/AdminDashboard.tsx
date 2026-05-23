@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { queryClient } from "@/lib/queryClient";
@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users } from "lucide-react";
-import { Link } from "wouter";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Link, useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +20,18 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
+  const [location] = useLocation();
   const { data: settings, isLoading: settingsLoading } = useSettings();
+
+  // Auto-login from query param ?passcode=xxx
+  useEffect(() => {
+    if (!settings || isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    const pc = params.get("passcode");
+    if (pc && pc === settings.adminCode) {
+      setIsAuthenticated(true);
+    }
+  }, [settings, isAuthenticated]);
   const { data: articles, isLoading: articlesLoading } = useArticles();
   const { data: announcements, isLoading: annLoading } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
@@ -441,7 +453,93 @@ export default function AdminDashboard() {
                       <Input name="adminCode" defaultValue={settings?.adminCode} placeholder="1234" />
                     </div>
                   </div>
+                  {/* ── Spam Protection Section ── */}
+                  <Separator className="my-4" />
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-4">
+                    <h4 className="font-bold text-amber-800 flex items-center gap-2">
+                      <Shield className="h-5 w-5" /> Προστασία Από Απόστολη (Σπάμ / Cooldown)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Comments toggle */}
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                        <div>
+                          <p className="font-bold text-sm">Σχόλια</p>
+                          <p className="text-xs text-muted-foreground">Ενεργόποιηση σχολίων</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">{settings?.commentsEnabled !== "false" ? "ON" : "OFF"}</span>
+                          <Switch
+                            defaultChecked={settings?.commentsEnabled !== "false"}
+                            onCheckedChange={(checked) => {
+                              const input = document.getElementById("commentsEnabled-hidden") as HTMLInputElement;
+                              if (input) input.value = checked ? "true" : "false";
+                            }}
+                          />
+                          <input type="hidden" id="commentsEnabled-hidden" name="commentsEnabled" defaultValue={settings?.commentsEnabled || "true"} />
+                        </div>
+                      </div>
+                      {/* Messages toggle */}
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                        <div>
+                          <p className="font-bold text-sm">Μηνύματα Επικοινωνίας</p>
+                          <p className="text-xs text-muted-foreground">Ενεργόποιηση φόρμας</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">{settings?.messagesEnabled !== "false" ? "ON" : "OFF"}</span>
+                          <Switch
+                            defaultChecked={settings?.messagesEnabled !== "false"}
+                            onCheckedChange={(checked) => {
+                              const input = document.getElementById("messagesEnabled-hidden") as HTMLInputElement;
+                              if (input) input.value = checked ? "true" : "false";
+                            }}
+                          />
+                          <input type="hidden" id="messagesEnabled-hidden" name="messagesEnabled" defaultValue={settings?.messagesEnabled || "true"} />
+                        </div>
+                      </div>
+                      {/* Subscribe toggle */}
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                        <div>
+                          <p className="font-bold text-sm">Newsletter</p>
+                          <p className="text-xs text-muted-foreground">Ενεργόποιηση εγγραφών</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">{settings?.subscribeEnabled !== "false" ? "ON" : "OFF"}</span>
+                          <Switch
+                            defaultChecked={settings?.subscribeEnabled !== "false"}
+                            onCheckedChange={(checked) => {
+                              const input = document.getElementById("subscribeEnabled-hidden") as HTMLInputElement;
+                              if (input) input.value = checked ? "true" : "false";
+                            }}
+                          />
+                          <input type="hidden" id="subscribeEnabled-hidden" name="subscribeEnabled" defaultValue={settings?.subscribeEnabled || "true"} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Cooldown inputs */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                          <Timer className="h-3.5 w-3.5" /> Cooldown Σχολίων (δευτ.)
+                        </label>
+                        <Input name="commentCooldown" type="number" min="0" defaultValue={settings?.commentCooldown || "60"} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                          <Timer className="h-3.5 w-3.5" /> Cooldown Μηνυμάτων (δευτ.)
+                        </label>
+                        <Input name="messageCooldown" type="number" min="0" defaultValue={settings?.messageCooldown || "60"} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                          <Timer className="h-3.5 w-3.5" /> Cooldown Newsletter (δευτ.)
+                        </label>
+                        <Input name="subscribeCooldown" type="number" min="0" defaultValue={settings?.subscribeCooldown || "300"} />
+                      </div>
+                    </div>
+                  </div>
+
                   <Button type="submit" className="w-full mt-6" disabled={updateSettings.isPending}>
+                    {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Save Config
                   </Button>
                 </form>
