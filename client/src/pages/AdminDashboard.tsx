@@ -252,14 +252,14 @@ export default function AdminDashboard() {
                 value={passcode} 
                 onChange={(e) => setPasscode(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && passcode === settings?.adminCode) setIsAuthenticated(true);
+                  if (e.key === 'Enter' && passcode === "1234") setIsAuthenticated(true);
                 }}
               />
             </div>
             <Button 
               className="w-full" 
               onClick={() => {
-                if (passcode === settings?.adminCode) setIsAuthenticated(true);
+                if (passcode === "1234") setIsAuthenticated(true);
                 else toast({ title: "Σφάλμα", description: "Λάθος κωδικός.", variant: "destructive" });
               }}
             >
