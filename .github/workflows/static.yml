@@ -1,58 +1,24 @@
-name: Build and Deploy Vite Project
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-on:
-  push:
-    branches:
-      - main
+export default defineConfig({
+  // 1. Tells Vite your index.html and source files are inside /client
+  root: 'client',
+  
+  plugins: [react()],
+  
+  // 2. Adjusts paths so your imports (like @/components) don't break
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './client/src'),
+      '@shared': path.resolve(__dirname, './shared'),
+    },
+  },
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm' # This will look at the root lockfile successfully now
-
-      # 1. Installs your packages from the root folder
-      - name: Install dependencies
-        run: npm ci
-
-      # 2. Compiles your Vite app 
-      - name: Build project
-        run: npm run build
-
-      # 3. Creates the CNAME file inside the compiled output directory
-      - name: Add CNAME file
-        run: echo "4gymrhodes.qzz.io" > ./dist/CNAME
-
-      # 4. Prepares GitHub Pages environmental configurations
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      # 5. Uploads the correct distribution path where your compiled code ends up
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-      # 6. Pushes the static site live
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  // 3. Tells Vite to output the final compiled code back to the root /dist directory
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
+});
