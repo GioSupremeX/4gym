@@ -29,24 +29,31 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          # Tells the cache manager to look at the package-lock.json inside client
+          cache-dependency-path: ./client/package-lock.json
 
+      # 1. Installs your packages directly inside the client folder
       - name: Install dependencies
+        working-directory: ./client
         run: npm ci
 
+      # 2. Compiles your Vite app directly inside the client folder
       - name: Build project
+        working-directory: ./client
         run: npm run build
 
-      # Fixes the 404 by hardcoding your domain into the compiled folder
+      # 3. Creates the CNAME file inside the newly generated client/dist folder
       - name: Add CNAME file
-        run: echo "4gymrhodes.qzz.io" > ./dist/CNAME
+        run: echo "4gymrhodes.qzz.io" > ./client/dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # 4. Uploads the correct path where Vite actually saved your website files
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './client/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
