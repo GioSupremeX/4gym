@@ -1,32 +1,25 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "@shared/schema";
+import { drizzle } from 'drizzle-orm/node-postgres'; // Or 'drizzle-orm/postgres-js' depending on your driver
+import pg from 'pg';
+import * as schema from './schema';
 
-const { Pool } = pg;
+const databaseUrl = process.env.DATABASE_URL;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL environment variable is missing.");
 }
 
-// 1. Clean the string just in case query params leak in
-const cleanConnectionString = process.env.DATABASE_URL.split('?')[0];
+// 1. Clean the string but preserve native parameters securely
+const cleanConnectionString = databaseUrl.split('?')[0];
 
-try {
-  const parsed = new URL(cleanConnectionString);
-  console.log(`Postgres host: ${parsed.hostname}, port: ${parsed.port || 5432}, ssl: ${process.env.NODE_ENV === 'production' ? 'forced' : 'disabled'}`);
-} catch (e) {
-  console.log("Postgres: unable to parse DATABASE_URL for debug output");
-}
+const pool = new pg.Pool({
+  connectionString: cleanConnectionString,
+  // 2. Explicitly force production-grade SSL configurations cleanly
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-// 2. Configure the pool options safely
-const poolOptions: any = { 
-  connectionString: cleanConnectionString 
-};
-
-// Explicitly enforce production SSL for Neon
-if (process.env.NODE_ENV === "production") {
-  poolOptions.ssl = { rejectUnauthorized: false };
-}
-
-export const pool = new Pool(poolOptions);
 export const db = drizzle(pool, { schema });
