@@ -23,7 +23,7 @@ const poolOptions: any = {
   connectionString: cleanConnectionString 
 };
 
-// Explicitly enforce production SSL for Neon, completely bypassing string parsing
+// Explicitly enforce production SSL for Neon
 if (process.env.NODE_ENV === "production") {
   poolOptions.ssl = { rejectUnauthorized: false };
 }
