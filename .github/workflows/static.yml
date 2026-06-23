@@ -1,24 +1,52 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+name: Build and Deploy Vite Project
 
-export default defineConfig({
-  // 1. Tells Vite your index.html and source files are inside /client
-  root: 'client',
-  
-  plugins: [react()],
-  
-  // 2. Adjusts paths so your imports (like @/components) don't break
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './client/src'),
-      '@shared': path.resolve(__dirname, './shared'),
-    },
-  },
+on:
+  push:
+    branches:
+      - main
 
-  // 3. Tells Vite to output the final compiled code back to the root /dist directory
-  build: {
-    outDir: '../dist',
-    emptyOutDir: true,
-  },
-});
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Add CNAME file
+        run: echo "4gymrhodes.qzz.io" > ./dist/CNAME
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
