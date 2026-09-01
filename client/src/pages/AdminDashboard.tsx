@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer, LogOut } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,20 +18,78 @@ import { Announcement, ReportedComment, Subscriber, Contact } from "@shared/sche
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
-  const [location] = useLocation();
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { data: adminSession, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
+    queryKey: ["/api/admin/session"],
+  });
+  const isAuthenticated = adminSession?.authenticated === true;
 
-  // Auto-login from query param ?passcode=xxx
   useEffect(() => {
-    if (!settings || isAuthenticated) return;
-    const params = new URLSearchParams(window.location.search);
-    const pc = params.get("passcode");
-    if (pc && pc === settings.adminCode) {
-      setIsAuthenticated(true);
-    }
-  }, [settings, isAuthenticated]);
+    if (cooldownSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setCooldownSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownSeconds]);
+
+  const login = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ passcode: code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const error = new Error(body.message || "Αποτυχία σύνδεσης.") as Error & {
+          remainingSeconds?: number;
+          attemptsRemaining?: number;
+        };
+        error.remainingSeconds = body.remainingSeconds;
+        error.attemptsRemaining = body.attemptsRemaining;
+        throw error;
+      }
+      return body;
+    },
+    onSuccess: () => {
+      setPasscode("");
+      setCooldownSeconds(0);
+      queryClient.setQueryData(["/api/admin/session"], { authenticated: true });
+      toast({ title: "Επιτυχία", description: "Η πρόσβαση επιβεβαιώθηκε." });
+    },
+    onError: (error) => {
+      const authError = error as Error & { remainingSeconds?: number; attemptsRemaining?: number };
+      if (authError.remainingSeconds) {
+        setCooldownSeconds(authError.remainingSeconds);
+      }
+      const attemptsMessage = authError.attemptsRemaining
+        ? ` Απομένουν ${authError.attemptsRemaining} προσπάθειες.`
+        : "";
+      toast({
+        title: "Η πρόσβαση απορρίφθηκε",
+        description: `${authError.message}${attemptsMessage}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const logout = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Αποτυχία αποσύνδεσης.");
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/admin/session"], { authenticated: false });
+      toast({ title: "Αποσύνδεση", description: "Η διαχειριστική συνεδρία έκλεισε." });
+    },
+  });
+
   const { data: articles, isLoading: articlesLoading } = useArticles();
   const { data: announcements, isLoading: annLoading } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
@@ -226,7 +284,7 @@ export default function AdminDashboard() {
     });
   };
 
-  if (settingsLoading || articlesLoading || annLoading) {
+  if (authLoading || settingsLoading || articlesLoading || annLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -245,26 +303,47 @@ export default function AdminDashboard() {
             <CardTitle className="text-2xl font-display font-bold text-primary">Control Room Access</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Enter Passcode</label>
-              <Input 
-                type="password" 
-                value={passcode} 
-                onChange={(e) => setPasscode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && passcode === settings?.adminCode) setIsAuthenticated(true);
-                }}
-              />
-            </div>
-            <Button 
-              className="w-full" 
-              onClick={() => {
-                if (passcode === settings?.adminCode) setIsAuthenticated(true);
-                else toast({ title: "Σφάλμα", description: "Λάθος κωδικός.", variant: "destructive" });
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (passcode && cooldownSeconds === 0 && !login.isPending) {
+                  login.mutate(passcode);
+                }
               }}
             >
-              Unlock
-            </Button>
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                value="administrator"
+                readOnly
+                tabIndex={-1}
+                aria-hidden="true"
+                className="sr-only"
+              />
+              <div className="space-y-2">
+                <label htmlFor="admin-passcode" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Enter Passcode</label>
+                <Input
+                  id="admin-passcode"
+                  type="password"
+                  value={passcode}
+                  autoComplete="current-password"
+                  onChange={(e) => setPasscode(e.target.value)}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!passcode || cooldownSeconds > 0 || login.isPending}
+              >
+                {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {cooldownSeconds > 0 ? `Δοκιμάστε ξανά σε ${cooldownSeconds}δ.` : "Unlock"}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Μετά από 3 αποτυχημένες προσπάθειες ενεργοποιείται προσωρινό κλείδωμα.
+              </p>
+            </form>
           </CardContent>
         </Card>
       </div>
@@ -279,11 +358,17 @@ export default function AdminDashboard() {
             <Settings className="h-8 w-8" />
             Control Room
           </h1>
-          <Button variant="outline" asChild>
-            <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή στην Αρχική
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Επιστροφή στην Αρχική
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => logout.mutate()} disabled={logout.isPending}>
+              {logout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+              Αποσύνδεση
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
@@ -312,7 +397,11 @@ export default function AdminDashboard() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
-                    updateSettings.mutate(Object.fromEntries(formData));
+                    const values = Object.fromEntries(formData);
+                    if (!String(values.adminCode || "").trim()) {
+                      delete values.adminCode;
+                    }
+                    updateSettings.mutate(values);
                   }}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -450,7 +539,10 @@ export default function AdminDashboard() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Passcode Διαχείρισης</label>
-                      <Input name="adminCode" defaultValue={settings?.adminCode} placeholder="1234" />
+                      <Input name="adminCode" type="password" autoComplete="new-password" placeholder="Αφήστε κενό για να μείνει ίδιος" />
+                      <p className="text-xs text-muted-foreground">
+                        Ο τρέχων κωδικός δεν εμφανίζεται ποτέ. Συμπληρώστε μόνο αν θέλετε να τον αλλάξετε.
+                      </p>
                     </div>
                   </div>
                   {/* ── Spam Protection Section ── */}

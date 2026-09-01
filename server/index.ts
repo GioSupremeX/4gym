@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,6 +14,20 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+declare module "express-session" {
+  interface SessionData {
+    isAdmin?: boolean;
+  }
+}
+
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET must be set to protect admin sessions.");
+}
+
+app.set("trust proxy", 1);
+const PgSession = connectPgSimple(session);
 
 app.use(
   express.json({
@@ -22,6 +39,24 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    }),
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 8 * 60 * 60 * 1000,
+    },
+  }),
+);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

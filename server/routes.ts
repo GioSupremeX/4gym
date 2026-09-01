@@ -3,9 +3,15 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema, insertContactSchema } from "@shared/schema";
 import { api } from "@shared/routes";
+import { codesMatch, getLoginLockout, recordFailedLogin, recordSuccessfulLogin, requireAdmin } from "./auth";
 
 // Simple in-memory cooldown tracker (IP -> { endpoint: timestamp })
 const cooldownMap = new Map<string, Map<string, number>>();
+
+function publicSettings(settings: Awaited<ReturnType<typeof storage.getSettings>>) {
+  const { adminCode: _adminCode, ...safeSettings } = settings;
+  return safeSettings;
+}
 
 function checkCooldown(ip: string, endpoint: string, seconds: number): boolean {
   const now = Date.now();
@@ -29,6 +35,66 @@ function getCooldownRemaining(ip: string, endpoint: string, seconds: number): nu
 }
 
 export async function registerRoutes(server: Server, app: Express): Promise<void> {
+  // Verify the passcode on the server and keep authentication in an HttpOnly
+  // session. The browser never receives the stored passcode.
+  app.get("/api/admin/session", (req: Request, res: Response) => {
+    res.json({ authenticated: req.session?.isAdmin === true });
+  });
+
+  app.post("/api/admin/login", async (req: Request, res: Response) => {
+    const lockedFor = getLoginLockout(req);
+    if (lockedFor > 0) {
+      res.setHeader("Retry-After", lockedFor);
+      return res.status(429).json({
+        message: `Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε ξανά σε ${lockedFor} δευτερόλεπτα.`,
+        remainingSeconds: lockedFor,
+      });
+    }
+
+    if (typeof req.body?.passcode !== "string" || req.body.passcode.length > 256) {
+      return res.status(400).json({ message: "Ο κωδικός δεν είναι έγκυρος." });
+    }
+
+    const settings = await storage.getSettings();
+    if (!codesMatch(req.body.passcode, settings.adminCode)) {
+      const result = recordFailedLogin(req);
+
+      if (result.locked) {
+        res.setHeader("Retry-After", result.lockoutSeconds);
+        return res.status(429).json({
+          message: `Πολλές αποτυχημένες προσπάθειες. Η πρόσβαση κλειδώθηκε για ${result.lockoutSeconds} δευτερόλεπτα.`,
+          remainingSeconds: result.lockoutSeconds,
+        });
+      }
+
+      return res.status(401).json({
+        message: "Λάθος κωδικός.",
+        attemptsRemaining: result.remainingAttempts,
+      });
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((error) => (error ? reject(error) : resolve()));
+    });
+    req.session.isAdmin = true;
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((error) => (error ? reject(error) : resolve()));
+    });
+    recordSuccessfulLogin(req);
+
+    res.json({ authenticated: true });
+  });
+
+  app.post("/api/admin/logout", requireAdmin, (req: Request, res: Response) => {
+    req.session.destroy((error) => {
+      if (error) {
+        return res.status(500).json({ message: "Αποτυχία αποσύνδεσης." });
+      }
+      res.clearCookie("connect.sid");
+      res.status(204).end();
+    });
+  });
+
   // Articles
   app.get(api.articles.list.path, async (_req: Request, res: Response) => {
     const articlesList = await storage.getArticles();
@@ -41,21 +107,21 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.post(api.articles.create.path, async (req: Request, res: Response) => {
+  app.post(api.articles.create.path, requireAdmin, async (req: Request, res: Response) => {
     const parsed = insertArticleSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.createArticle(parsed.data);
     res.json(article);
   });
 
-  app.patch(api.articles.update.path, async (req: Request, res: Response) => {
+  app.patch(api.articles.update.path, requireAdmin, async (req: Request, res: Response) => {
     const parsed = insertArticleSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.updateArticle(Number(req.params.id), parsed.data);
     res.json(article);
   });
 
-  app.delete(api.articles.delete.path, async (req: Request, res: Response) => {
+  app.delete(api.articles.delete.path, requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteArticle(Number(req.params.id));
     res.status(204).end();
   });
@@ -66,14 +132,14 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(announcementsList);
   });
 
-  app.post("/api/announcements", async (req: Request, res: Response) => {
+  app.post("/api/announcements", requireAdmin, async (req: Request, res: Response) => {
     const parsed = insertAnnouncementSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const announcement = await storage.createAnnouncement(parsed.data);
     res.json(announcement);
   });
 
-  app.delete("/api/announcements/:id", async (req: Request, res: Response) => {
+  app.delete("/api/announcements/:id", requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteAnnouncement(Number(req.params.id));
     res.status(204).end();
   });
@@ -81,14 +147,25 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
   // Settings
   app.get(api.settings.get.path, async (_req: Request, res: Response) => {
     const settings = await storage.getSettings();
-    res.json(settings);
+    res.json(publicSettings(settings));
   });
 
-  app.patch(api.settings.update.path, async (req: Request, res: Response) => {
+  app.patch(api.settings.update.path, requireAdmin, async (req: Request, res: Response) => {
     const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
-    const settings = await storage.updateSettings(parsed.data);
-    res.json(settings);
+    const update = { ...parsed.data };
+    if (update.adminCode !== undefined) {
+      const trimmedAdminCode = update.adminCode.trim();
+      if (trimmedAdminCode.length === 0) {
+        delete update.adminCode;
+      } else if (trimmedAdminCode.length < 4 || trimmedAdminCode.length > 256) {
+        return res.status(400).json({ message: "Ο κωδικός πρέπει να έχει 4 έως 256 χαρακτήρες." });
+      } else {
+        update.adminCode = trimmedAdminCode;
+      }
+    }
+    const settings = await storage.updateSettings(update);
+    res.json(publicSettings(settings));
   });
 
   // Category Articles
@@ -121,13 +198,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(comment);
   });
 
-  app.delete("/api/comments/:id", async (req: Request, res: Response) => {
+  app.delete("/api/comments/:id", requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteComment(Number(req.params.id));
     res.status(204).end();
   });
 
   // Reports
-  app.get("/api/comments/reports", async (_req: Request, res: Response) => {
+  app.get("/api/comments/reports", requireAdmin, async (_req: Request, res: Response) => {
     const reports = await storage.getReportedComments();
     res.json(reports);
   });
@@ -139,13 +216,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(report);
   });
 
-  app.delete("/api/comments/reports/:id", async (req: Request, res: Response) => {
+  app.delete("/api/comments/reports/:id", requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteReport(Number(req.params.id));
     res.status(204).end();
   });
 
   // Subscribers
-  app.get("/api/subscribers", async (_req: Request, res: Response) => {
+  app.get("/api/subscribers", requireAdmin, async (_req: Request, res: Response) => {
     const subs = await storage.getSubscribers();
     res.json(subs);
   });
@@ -174,13 +251,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     }
   });
 
-  app.delete("/api/subscribers/:id", async (req: Request, res: Response) => {
+  app.delete("/api/subscribers/:id", requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteSubscriber(Number(req.params.id));
     res.status(204).end();
   });
 
   // Contact Messages
-  app.get("/api/contacts", async (_req: Request, res: Response) => {
+  app.get("/api/contacts", requireAdmin, async (_req: Request, res: Response) => {
     const msgs = await storage.getContacts();
     res.json(msgs);
   });
@@ -202,7 +279,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(msg);
   });
 
-  app.delete("/api/contacts/:id", async (req: Request, res: Response) => {
+  app.delete("/api/contacts/:id", requireAdmin, async (req: Request, res: Response) => {
     await storage.deleteContact(Number(req.params.id));
     res.status(204).end();
   });

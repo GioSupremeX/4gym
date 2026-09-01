@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Flag, Loader2 } from "lucide-react";
+import { MessageSquare, Flag, Loader2, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { el } from "date-fns/locale";
 import { CaptchaField } from "@/components/Captcha";
