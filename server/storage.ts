@@ -1,6 +1,6 @@
-import { articles, siteSettings, announcements, comments, reportedComments, subscribers, contacts, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber, type Contact, type InsertContact } from "@shared/schema";
+import { articles, siteSettings, announcements, comments, reportedComments, subscribers, contacts, adminUsers, adminLoginAttempts, adminAuditLogs, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber, type Contact, type InsertContact, type AdminUser, type InsertAdminUser, type AdminLoginAttempt, type AdminAuditLog } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, lt } from "drizzle-orm";
 
 export interface IStorage {
   // Articles
@@ -18,6 +18,29 @@ export interface IStorage {
   // Settings
   getSettings(): Promise<SiteSettings>;
   updateSettings(settings: UpdateSiteSettings): Promise<SiteSettings>;
+
+  // Admin accounts and security
+  getAdminUsers(): Promise<AdminUser[]>;
+  getAdminUserById(id: number): Promise<AdminUser | undefined>;
+  getAdminUserByUsername(username: string): Promise<AdminUser | undefined>;
+  createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
+  updateAdminUser(id: number, update: Partial<InsertAdminUser>): Promise<AdminUser | undefined>;
+  deleteAdminUser(id: number): Promise<void>;
+  getLoginAttempt(key: string): Promise<AdminLoginAttempt | undefined>;
+  saveLoginAttempt(key: string, update: {
+    failedAttempts?: number;
+    escalationLevel?: number;
+    lockedUntil?: Date | null;
+    lastFailureAt?: Date;
+  }): Promise<AdminLoginAttempt>;
+  deleteLoginAttempt(key: string): Promise<void>;
+  createAuditLog(log: {
+    adminUserId?: number | null;
+    username: string;
+    action: string;
+    ipAddress: string;
+    details?: string;
+  }): Promise<AdminAuditLog>;
 
   // Comments
   getCommentsByArticle(articleId: number): Promise<Comment[]>;
@@ -104,6 +127,71 @@ export class DatabaseStorage implements IStorage {
       [settings] = await db.update(siteSettings).set(update).where(eq(siteSettings.id, 1)).returning();
     }
     return settings;
+  }
+
+  async getAdminUsers(): Promise<AdminUser[]> {
+    return await db.select().from(adminUsers).orderBy(adminUsers.username);
+  }
+
+  async getAdminUserById(id: number): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
+    return user;
+  }
+
+  async getAdminUserByUsername(username: string): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.username, username));
+    return user;
+  }
+
+  async createAdminUser(user: InsertAdminUser): Promise<AdminUser> {
+    const [created] = await db.insert(adminUsers).values(user).returning();
+    return created;
+  }
+
+  async updateAdminUser(id: number, update: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
+    const [updated] = await db.update(adminUsers).set(update).where(eq(adminUsers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAdminUser(id: number): Promise<void> {
+    await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  }
+
+  async getLoginAttempt(key: string): Promise<AdminLoginAttempt | undefined> {
+    const [attempt] = await db.select().from(adminLoginAttempts).where(eq(adminLoginAttempts.attemptKey, key));
+    return attempt;
+  }
+
+  async saveLoginAttempt(
+    key: string,
+    update: {
+      failedAttempts?: number;
+      escalationLevel?: number;
+      lockedUntil?: Date | null;
+      lastFailureAt?: Date;
+    },
+  ): Promise<AdminLoginAttempt> {
+    const [saved] = await db
+      .insert(adminLoginAttempts)
+      .values({ attemptKey: key, ...update })
+      .onConflictDoUpdate({ target: adminLoginAttempts.attemptKey, set: update })
+      .returning();
+    return saved;
+  }
+
+  async deleteLoginAttempt(key: string): Promise<void> {
+    await db.delete(adminLoginAttempts).where(eq(adminLoginAttempts.attemptKey, key));
+  }
+
+  async createAuditLog(log: {
+    adminUserId?: number | null;
+    username: string;
+    action: string;
+    ipAddress: string;
+    details?: string;
+  }): Promise<AdminAuditLog> {
+    const [created] = await db.insert(adminAuditLogs).values(log).returning();
+    return created;
   }
 
   async getCommentsByArticle(articleId: number): Promise<Comment[]> {

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer, LogOut } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer, LogOut, UserPlus, KeyRound, Smartphone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -16,15 +16,34 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Announcement, ReportedComment, Subscriber, Contact } from "@shared/schema";
 
+type AdminUserSummary = {
+  id: number;
+  username: string;
+  role: string;
+  active: string;
+  twoFactorEnabled: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+};
+
+type AdminSession = {
+  authenticated: boolean;
+  requiresTwoFactor?: boolean;
+  user?: AdminUserSummary;
+};
+
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const [username, setUsername] = useState("administrator");
   const [passcode, setPasscode] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { data: settings, isLoading: settingsLoading } = useSettings();
-  const { data: adminSession, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
+  const { data: adminSession, isLoading: authLoading } = useQuery<AdminSession>({
     queryKey: ["/api/admin/session"],
   });
   const isAuthenticated = adminSession?.authenticated === true;
+  const twoFactorRequired = adminSession?.requiresTwoFactor === true;
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -35,12 +54,12 @@ export default function AdminDashboard() {
   }, [cooldownSeconds]);
 
   const login = useMutation({
-    mutationFn: async (code: string) => {
+    mutationFn: async (credentials: { username: string; passcode: string }) => {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ passcode: code }),
+        body: JSON.stringify(credentials),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -54,10 +73,18 @@ export default function AdminDashboard() {
       }
       return body;
     },
-    onSuccess: () => {
+    onSuccess: (body) => {
+      if (body.requiresTwoFactor) {
+        queryClient.setQueryData(["/api/admin/session"], {
+          authenticated: false,
+          requiresTwoFactor: true,
+        });
+        toast({ title: "Απαιτείται δεύτερο βήμα", description: "Πληκτρολογήστε τον εξαψήφιο κωδικό της εφαρμογής επαλήθευσης." });
+        return;
+      }
       setPasscode("");
       setCooldownSeconds(0);
-      queryClient.setQueryData(["/api/admin/session"], { authenticated: true });
+      queryClient.setQueryData(["/api/admin/session"], { authenticated: true, user: body.user });
       toast({ title: "Επιτυχία", description: "Η πρόσβαση επιβεβαιώθηκε." });
     },
     onError: (error) => {
@@ -73,6 +100,40 @@ export default function AdminDashboard() {
         description: `${authError.message}${attemptsMessage}`,
         variant: "destructive",
       });
+    },
+  });
+
+  const verifyTwoFactor = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetch("/api/admin/verify-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const error = new Error(body.message || "Αποτυχία επαλήθευσης.") as Error & {
+          remainingSeconds?: number;
+          attemptsRemaining?: number;
+        };
+        error.remainingSeconds = body.remainingSeconds;
+        error.attemptsRemaining = body.attemptsRemaining;
+        throw error;
+      }
+      return body;
+    },
+    onSuccess: (body) => {
+      setTwoFactorCode("");
+      setPasscode("");
+      setCooldownSeconds(0);
+      queryClient.setQueryData(["/api/admin/session"], { authenticated: true, user: body.user });
+      toast({ title: "Επιτυχία", description: "Η πρόσβαση επιβεβαιώθηκε." });
+    },
+    onError: (error) => {
+      const authError = error as Error & { remainingSeconds?: number; attemptsRemaining?: number };
+      if (authError.remainingSeconds) setCooldownSeconds(authError.remainingSeconds);
+      toast({ title: "Η επαλήθευση απέτυχε", description: authError.message, variant: "destructive" });
     },
   });
 
@@ -93,6 +154,125 @@ export default function AdminDashboard() {
   const { data: articles, isLoading: articlesLoading } = useArticles();
   const { data: announcements, isLoading: annLoading } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
+  });
+  const { data: adminUsers = [], isLoading: usersLoading } = useQuery<AdminUserSummary[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: isAuthenticated && adminSession?.user?.role === "admin",
+  });
+
+  const [newAdminUsername, setNewAdminUsername] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [twoFactorConfirmCode, setTwoFactorConfirmCode] = useState("");
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; otpauthUri: string; recoveryCodes: string[] } | null>(null);
+
+  const createAdminUser = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: newAdminUsername, password: newAdminPassword }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία δημιουργίας λογαριασμού.");
+      return body;
+    },
+    onSuccess: () => {
+      setNewAdminUsername("");
+      setNewAdminPassword("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Επιτυχία", description: "Ο νέος λογαριασμός δημιουργήθηκε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const disableTwoFactor = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/2fa/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: currentPassword }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία απενεργοποίησης.");
+      return body;
+    },
+    onSuccess: () => {
+      setCurrentPassword("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Απενεργοποιήθηκε", description: "Η επαλήθευση δύο βημάτων απενεργοποιήθηκε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const deleteAdminUser = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία διαγραφής λογαριασμού.");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Επιτυχία", description: "Ο λογαριασμός διαγράφηκε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία αλλαγής κωδικού.");
+    },
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      toast({ title: "Επιτυχία", description: "Ο προσωπικός σας κωδικός άλλαξε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const setupTwoFactor = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/2fa/setup", { credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία ρύθμισης δύο βημάτων.");
+      return body;
+    },
+    onSuccess: (body) => {
+      setTwoFactorSetup(body);
+      toast({ title: "Έτοιμο για ενεργοποίηση", description: "Αποθηκεύστε τους recovery codes πριν συνεχίσετε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const confirmTwoFactor = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetch("/api/admin/2fa/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία ενεργοποίησης.");
+      return body;
+    },
+    onSuccess: () => {
+      setTwoFactorSetup(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Ενεργοποιήθηκε", description: "Η επαλήθευση δύο βημάτων είναι πλέον ενεργή." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
   });
   const { data: reportedComments, isLoading: reportsLoading } = useQuery<(ReportedComment & { comment: any })[]>({
     queryKey: ["/api/comments/reports"],
@@ -300,48 +480,73 @@ export default function AdminDashboard() {
             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Settings className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-display font-bold text-primary">Control Room Access</CardTitle>
+            <CardTitle className="text-2xl font-display font-bold text-primary">
+              {twoFactorRequired ? "Two-Step Verification" : "Control Room Access"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (passcode && cooldownSeconds === 0 && !login.isPending) {
-                  login.mutate(passcode);
+                if (twoFactorRequired) {
+                  if (twoFactorCode && cooldownSeconds === 0 && !verifyTwoFactor.isPending) {
+                    verifyTwoFactor.mutate(twoFactorCode);
+                  }
+                } else if (username && passcode && cooldownSeconds === 0 && !login.isPending) {
+                  login.mutate({ username, passcode });
                 }
               }}
             >
-              <input
-                type="text"
-                name="username"
-                autoComplete="username"
-                value="administrator"
-                readOnly
-                tabIndex={-1}
-                aria-hidden="true"
-                className="sr-only"
-              />
-              <div className="space-y-2">
-                <label htmlFor="admin-passcode" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Enter Passcode</label>
-                <Input
-                  id="admin-passcode"
-                  type="password"
-                  value={passcode}
-                  autoComplete="current-password"
-                  onChange={(e) => setPasscode(e.target.value)}
-                />
-              </div>
+              {!twoFactorRequired ? (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="admin-username" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Username</label>
+                    <Input
+                      id="admin-username"
+                      value={username}
+                      autoComplete="username"
+                      onChange={(e) => setUsername(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="admin-passcode" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Password</label>
+                    <Input
+                      id="admin-passcode"
+                      type="password"
+                      value={passcode}
+                      autoComplete="current-password"
+                      onChange={(e) => setPasscode(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label htmlFor="admin-2fa-code" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Authenticator or recovery code</label>
+                  <Input
+                    id="admin-2fa-code"
+                    inputMode="numeric"
+                    value={twoFactorCode}
+                    autoComplete="one-time-code"
+                    onChange={(e) => setTwoFactorCode(e.target.value)}
+                  />
+                </div>
+              )}
               <Button
                 type="submit"
                 className="w-full"
-                disabled={!passcode || cooldownSeconds > 0 || login.isPending}
+                disabled={
+                  (twoFactorRequired ? !twoFactorCode : !username || !passcode) ||
+                  cooldownSeconds > 0 ||
+                  login.isPending ||
+                  verifyTwoFactor.isPending
+                }
               >
-                {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {cooldownSeconds > 0 ? `Δοκιμάστε ξανά σε ${cooldownSeconds}δ.` : "Unlock"}
+                {login.isPending || verifyTwoFactor.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {cooldownSeconds > 0 ? `Δοκιμάστε ξανά σε ${cooldownSeconds}δ.` : twoFactorRequired ? "Verify" : "Sign in"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Μετά από 3 αποτυχημένες προσπάθειες ενεργοποιείται προσωρινό κλείδωμα.
+                {twoFactorRequired ? "Χρησιμοποιήστε τον εξαψήφιο κωδικό ή ένα recovery code." : "Μετά από 3 αποτυχημένες προσπάθειες ενεργοποιείται προσωρινό κλείδωμα."}
               </p>
             </form>
           </CardContent>
@@ -382,7 +587,156 @@ export default function AdminDashboard() {
             <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
             <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>
             <TabsTrigger value="contacts" className="flex-1 min-w-[100px]">Μηνύματα</TabsTrigger>
+            {adminSession?.user?.role === "admin" && <TabsTrigger value="accounts" className="flex-1 min-w-[100px]">Λογαριασμοί</TabsTrigger>}
           </TabsList>
+
+          {adminSession?.user?.role === "admin" && (
+            <TabsContent value="accounts">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border-2 border-primary/10 shadow-lg">
+                  <CardHeader className="bg-primary/5 border-b border-primary/10">
+                    <CardTitle className="flex items-center gap-2 text-primary font-display">
+                      <Users className="h-5 w-5" /> Admin Accounts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-5">
+                    <form
+                      className="space-y-3 border-b pb-5"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        createAdminUser.mutate();
+                      }}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                        <UserPlus className="h-4 w-4" /> Νέος λογαριασμός
+                      </div>
+                      <Input
+                        placeholder="username"
+                        value={newAdminUsername}
+                        onChange={(event) => setNewAdminUsername(event.target.value)}
+                        autoComplete="username"
+                        required
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Κωδικός (τουλάχιστον 12 χαρακτήρες)"
+                        value={newAdminPassword}
+                        onChange={(event) => setNewAdminPassword(event.target.value)}
+                        autoComplete="new-password"
+                        minLength={12}
+                        required
+                      />
+                      <Button type="submit" className="w-full" disabled={createAdminUser.isPending}>
+                        {createAdminUser.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                        Δημιουργία
+                      </Button>
+                    </form>
+                    {usersLoading ? (
+                      <div className="text-center py-4 text-muted-foreground">Φόρτωση λογαριασμών...</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {adminUsers.map((user) => (
+                          <div key={user.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                            <div>
+                              <p className="font-bold">{user.username}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {user.role} · 2FA: {user.twoFactorEnabled === "true" ? "ON" : "OFF"}
+                              </p>
+                            </div>
+                            {user.id !== adminSession.user?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (window.confirm(`Να διαγραφεί ο λογαριασμός ${user.username};`)) {
+                                    deleteAdminUser.mutate(user.id);
+                                  }
+                                }}
+                                disabled={deleteAdminUser.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-6">
+                  <Card className="border-2 border-primary/10 shadow-lg">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                      <CardTitle className="flex items-center gap-2 text-primary font-display">
+                        <KeyRound className="h-5 w-5" /> Ο προσωπικός μου λογαριασμός
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Συνδεδεμένος ως <strong>{adminSession.user?.username}</strong>. Η αλλαγή κωδικού ακυρώνει τις άλλες συνεδρίες.
+                      </p>
+                      <form
+                        className="space-y-3"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          changePassword.mutate();
+                        }}
+                      >
+                        <Input type="password" placeholder="Τρέχων κωδικός" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" required />
+                        <Input type="password" placeholder="Νέος κωδικός (τουλάχιστον 12 χαρακτήρες)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={12} required />
+                        <Button type="submit" variant="outline" className="w-full" disabled={changePassword.isPending}>
+                          {changePassword.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                          Αλλαγή κωδικού
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-primary/10 shadow-lg">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                      <CardTitle className="flex items-center gap-2 text-primary font-display">
+                        <Smartphone className="h-5 w-5" /> Επαλήθευση δύο βημάτων
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Προστατέψτε τον λογαριασμό με authenticator app και recovery codes.
+                      </p>
+                      {adminSession.user?.twoFactorEnabled === "true" ? (
+                        <div className="space-y-3">
+                          <p className="text-sm font-semibold text-green-700">Η επαλήθευση δύο βημάτων είναι ενεργή.</p>
+                          <Input type="password" placeholder="Κωδικός για απενεργοποίηση" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" />
+                          <Button variant="outline" className="w-full" onClick={() => disableTwoFactor.mutate()} disabled={disableTwoFactor.isPending || !currentPassword}>
+                            Απενεργοποίηση 2FA
+                          </Button>
+                        </div>
+                      ) : !twoFactorSetup ? (
+                        <Button variant="outline" className="w-full" onClick={() => setupTwoFactor.mutate()} disabled={setupTwoFactor.isPending}>
+                          {setupTwoFactor.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Smartphone className="h-4 w-4 mr-2" />}
+                          Ρύθμιση 2FA
+                        </Button>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="rounded-lg bg-muted p-3 text-xs break-all">
+                            <strong>Secret:</strong> {twoFactorSetup.secret}
+                          </div>
+                          <p className="text-xs text-muted-foreground">Προσθέστε το secret στην authenticator app και αποθηκεύστε τους recovery codes:</p>
+                          <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3 text-xs font-mono">
+                            {twoFactorSetup.recoveryCodes.map((code) => <span key={code}>{code}</span>)}
+                          </div>
+                          <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); confirmTwoFactor.mutate(twoFactorConfirmCode); }}>
+                            <Input placeholder="123456" value={twoFactorConfirmCode} onChange={(event) => setTwoFactorConfirmCode(event.target.value)} inputMode="numeric" required />
+                            <Button type="submit" disabled={confirmTwoFactor.isPending}>Confirm</Button>
+                          </form>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="stats">
             <Card className="border-2 border-primary/10 shadow-lg">
@@ -398,9 +752,6 @@ export default function AdminDashboard() {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     const values = Object.fromEntries(formData);
-                    if (!String(values.adminCode || "").trim()) {
-                      delete values.adminCode;
-                    }
                     updateSettings.mutate(values);
                   }}
                 >
@@ -536,13 +887,6 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Hero Image</label>
                       <Input name="heroImageUrl" defaultValue={settings?.heroImageUrl || ""} placeholder="https://..." />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Passcode Διαχείρισης</label>
-                      <Input name="adminCode" type="password" autoComplete="new-password" placeholder="Αφήστε κενό για να μείνει ίδιος" />
-                      <p className="text-xs text-muted-foreground">
-                        Ο τρέχων κωδικός δεν εμφανίζεται ποτέ. Συμπληρώστε μόνο αν θέλετε να τον αλλάξετε.
-                      </p>
                     </div>
                   </div>
                   {/* ── Spam Protection Section ── */}

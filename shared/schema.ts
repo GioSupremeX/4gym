@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -66,6 +66,44 @@ export const siteSettings = pgTable("site_settings", {
   subscribeCooldown: text("subscribe_cooldown").notNull().default("300"),
 });
 
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("admin"),
+  active: text("active").notNull().default("true"),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: text("two_factor_enabled").notNull().default("false"),
+  twoFactorRecoveryCodes: text("two_factor_recovery_codes").array().default([]),
+  authVersion: integer("auth_version").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+export const adminLoginAttempts = pgTable("admin_login_attempts", {
+  attemptKey: text("attempt_key").primaryKey(),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  escalationLevel: integer("escalation_level").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),
+  lastFailureAt: timestamp("last_failure_at").defaultNow().notNull(),
+});
+
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: serial("id").primaryKey(),
+  adminUserId: integer("admin_user_id"),
+  username: text("username").notNull(),
+  action: text("action").notNull(),
+  ipAddress: text("ip_address").notNull(),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
 export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   articleId: integer("article_id").notNull(),
@@ -124,3 +162,7 @@ export type InsertContact = z.infer<typeof insertContactSchema>;
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
 export type UpdateSiteSettings = Partial<InsertSiteSettings>;
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = typeof adminUsers.$inferInsert;
+export type AdminLoginAttempt = typeof adminLoginAttempts.$inferSelect;
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

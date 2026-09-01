@@ -8,6 +8,7 @@ import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
+const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
 declare module "http" {
   interface IncomingMessage {
@@ -18,6 +19,10 @@ declare module "http" {
 declare module "express-session" {
   interface SessionData {
     isAdmin?: boolean;
+    adminUserId?: number;
+    authVersion?: number;
+    pendingTwoFactorUserId?: number;
+    pendingTwoFactorExpiresAt?: number;
   }
 }
 
@@ -28,23 +33,36 @@ if (!sessionSecret) {
 
 app.set("trust proxy", 1);
 const PgSession = connectPgSimple(session);
+app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: https:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' ws: wss: https:;",
+  );
+  next();
+});
 
 app.use(
   express.json({
-    limit: '50mb',
+    limit: "10mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use(
   session({
     store: new PgSession({
       pool,
       tableName: "user_sessions",
-      createTableIfMissing: true,
+      createTableIfMissing: false,
     }),
     secret: sessionSecret,
     resave: false,
@@ -57,6 +75,48 @@ app.use(
     },
   }),
 );
+
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    const origin = req.get("origin");
+    if (origin && origin !== `${req.protocol}://${req.get("host")}`) {
+      return res.status(403).json({ message: "Μη έγκυρη προέλευση αιτήματος." });
+    }
+  }
+  next();
+});
+
+function requestRateLimit(maxRequests: number, windowMs: number) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const key = `${req.ip || req.socket.remoteAddress || "unknown"}:${req.path}`;
+    const now = Date.now();
+    const current = requestBuckets.get(key);
+    const bucket = !current || current.resetAt <= now
+      ? { count: 0, resetAt: now + windowMs }
+      : current;
+    bucket.count += 1;
+    requestBuckets.set(key, bucket);
+
+    if (requestBuckets.size > 10_000) {
+      requestBuckets.forEach((entry, bucketKey) => {
+        if (entry.resetAt <= now) requestBuckets.delete(bucketKey);
+      });
+    }
+
+    if (bucket.count > maxRequests) {
+      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader("Retry-After", retryAfter);
+      return res.status(429).json({ message: "Πάρα πολλά αιτήματα. Δοκιμάστε ξανά αργότερα." });
+    }
+    next();
+  };
+}
+
+app.use("/api/admin/login", requestRateLimit(20, 60_000));
+app.use("/api/contacts", requestRateLimit(15, 60_000));
+app.use("/api/subscribers", requestRateLimit(15, 60_000));
+app.use("/api/comments", requestRateLimit(30, 60_000));
+app.use("/api/articles", requestRateLimit(120, 60_000));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -72,22 +132,11 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
       log(logLine);
     }
   });
