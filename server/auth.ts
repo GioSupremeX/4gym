@@ -244,6 +244,13 @@ export function requireRole(...roles: string[]) {
   };
 }
 
+export const adminRolePermissions: Record<string, string[]> = {
+  owner: ["Όλα", "Διαχείριση λογαριασμών", "Ρυθμίσεις", "Περιεχόμενο", "Αναφορές", "Ιδιωτικά μηνύματα"],
+  admin: ["Περιεχόμενο", "Αναφορές", "Ιδιωτικά μηνύματα", "Διαχείριση λογαριασμών"],
+  editor: ["Άρθρα", "Ανακοινώσεις"],
+  moderator: ["Σχόλια", "Αναφορές"],
+};
+
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction): void {
   const origin = req.get("origin");
   if (origin && origin !== `${req.protocol}://${req.get("host")}`) {

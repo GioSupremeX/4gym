@@ -33,6 +33,19 @@ type AdminSession = {
   user?: AdminUserSummary;
 };
 
+const roleOptions = [
+  { value: "editor", label: "Editor", description: "Άρθρα και ανακοινώσεις" },
+  { value: "moderator", label: "Moderator", description: "Σχόλια και αναφορές" },
+  { value: "admin", label: "Admin", description: "Περιεχόμενο, moderation, ιδιωτικά δεδομένα και λογαριασμοί" },
+];
+
+const rolePermissions: Record<string, string> = {
+  owner: "Όλα — owner administrator, credits και λογαριασμοί",
+  admin: "Περιεχόμενο, moderation, ιδιωτικά δεδομένα και λογαριασμοί",
+  editor: "Άρθρα και ανακοινώσεις",
+  moderator: "Σχόλια και αναφορές",
+};
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [username, setUsername] = useState("administrator");
@@ -45,6 +58,7 @@ export default function AdminDashboard() {
   });
   const isAuthenticated = adminSession?.authenticated === true;
   const twoFactorRequired = adminSession?.requiresTwoFactor === true;
+  const canManageAccounts = adminSession?.user?.role === "owner" || adminSession?.user?.role === "admin";
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -158,11 +172,12 @@ export default function AdminDashboard() {
   });
   const { data: adminUsers = [], isLoading: usersLoading } = useQuery<AdminUserSummary[]>({
     queryKey: ["/api/admin/users"],
-    enabled: isAuthenticated && adminSession?.user?.role === "admin",
+    enabled: isAuthenticated && canManageAccounts,
   });
 
   const [newAdminUsername, setNewAdminUsername] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminRole, setNewAdminRole] = useState("editor");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [twoFactorConfirmCode, setTwoFactorConfirmCode] = useState("");
@@ -174,7 +189,7 @@ export default function AdminDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username: newAdminUsername, password: newAdminPassword }),
+        body: JSON.stringify({ username: newAdminUsername, password: newAdminPassword, role: newAdminRole }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || "Αποτυχία δημιουργίας λογαριασμού.");
@@ -183,6 +198,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       setNewAdminUsername("");
       setNewAdminPassword("");
+      setNewAdminRole("editor");
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "Επιτυχία", description: "Ο νέος λογαριασμός δημιουργήθηκε." });
     },
@@ -610,10 +626,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
             <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>
             <TabsTrigger value="contacts" className="flex-1 min-w-[100px]">Μηνύματα</TabsTrigger>
-            {adminSession?.user?.role === "admin" && <TabsTrigger value="accounts" className="flex-1 min-w-[100px]">Λογαριασμοί</TabsTrigger>}
+            {canManageAccounts && <TabsTrigger value="accounts" className="flex-1 min-w-[100px]">Λογαριασμοί</TabsTrigger>}
           </TabsList>
 
-          {adminSession?.user?.role === "admin" && (
+          {canManageAccounts && (
             <TabsContent value="accounts">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="border-2 border-primary/10 shadow-lg">
@@ -649,6 +665,15 @@ export default function AdminDashboard() {
                         minLength={12}
                         required
                       />
+                      <select
+                        value={newAdminRole}
+                        onChange={(event) => setNewAdminRole(event.target.value)}
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        aria-label="Δικαιώματα λογαριασμού"
+                      >
+                        {roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label} — {role.description}</option>)}
+                      </select>
+                      <p className="text-xs text-muted-foreground">Τα δικαιώματα εφαρμόζονται server-side και ο owner administrator δεν μπορεί να διαγραφεί.</p>
                       <Button type="submit" className="w-full" disabled={createAdminUser.isPending}>
                         {createAdminUser.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
                         Δημιουργία
@@ -663,10 +688,10 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-bold">{user.username}</p>
                               <p className="text-xs text-muted-foreground">
-                                {user.role} · 2FA: {user.twoFactorEnabled === "true" ? "ON" : "OFF"}
+                                {user.role} · {rolePermissions[user.role] || "Περιορισμένη πρόσβαση"} · 2FA: {user.twoFactorEnabled === "true" ? "ON" : "OFF"}
                               </p>
                             </div>
-                            {user.id !== adminSession.user?.id && (
+                            {user.id !== adminSession.user?.id && user.role !== "owner" && user.username !== "administrator" && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -959,23 +984,6 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Hero Image</label>
                       <Input name="heroImageUrl" defaultValue={settings?.heroImageUrl || ""} placeholder="https://..." />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-4 rounded-xl border border-primary/10 bg-primary/5 p-4">
-                    <div>
-                      <p className="font-bold text-primary">Credits δημιουργού</p>
-                      <p className="text-xs text-muted-foreground">Εμφανίζει το “Designed by GioSupremeX” με σύνδεσμο στο GitHub.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">{settings?.creditsEnabled !== "false" ? "ON" : "OFF"}</span>
-                      <Switch
-                        defaultChecked={settings?.creditsEnabled !== "false"}
-                        onCheckedChange={(checked) => {
-                          const input = document.getElementById("creditsEnabled-hidden") as HTMLInputElement;
-                          if (input) input.value = checked ? "true" : "false";
-                        }}
-                      />
-                      <input type="hidden" id="creditsEnabled-hidden" name="creditsEnabled" defaultValue={settings?.creditsEnabled || "true"} />
                     </div>
                   </div>
                   {/* ── Spam Protection Section ── */}

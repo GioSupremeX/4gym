@@ -168,13 +168,17 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
         user = await storage.createAdminUser({
           username: "administrator",
           passwordHash: await hashPassword(passcode),
-          role: "admin",
+           role: "owner",
           active: "true",
           twoFactorEnabled: "false",
           authVersion: 1,
         });
         await storage.updateSettings({ adminCode: randomBytes(32).toString("hex") });
       }
+    }
+
+    if (user && username === "administrator" && user.role === "admin") {
+      user = await storage.updateAdminUser(user.id, { role: "owner" }) || user;
     }
 
     if (
@@ -261,22 +265,25 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     });
   });
 
-  app.get("/api/admin/users", requireRole("admin"), async (_req: Request, res: Response) => {
+  app.get("/api/admin/users", requireRole("owner", "admin"), async (_req: Request, res: Response) => {
     const users = await storage.getAdminUsers();
     res.setHeader("Cache-Control", "no-store");
     res.json(users.map(safeUser));
   });
 
-  app.post("/api/admin/users", requireSameOrigin, requireRole("admin"), async (req: Request, res: Response) => {
+  app.post("/api/admin/users", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     const usernameResult = usernameSchema.safeParse(req.body?.username);
     if (!usernameResult.success || !validAdminPassword(req.body?.password)) {
       return res.status(400).json({ message: "Χρησιμοποιήστε όνομα χρήστη 3-64 χαρακτήρων και κωδικό τουλάχιστον 12 χαρακτήρων." });
     }
     try {
+      const role = req.body?.role === "moderator" || req.body?.role === "editor" || req.body?.role === "admin"
+        ? req.body.role
+        : "editor";
       const user = await storage.createAdminUser({
         username: usernameResult.data,
         passwordHash: await hashPassword(req.body.password),
-        role: req.body?.role === "editor" ? "editor" : "admin",
+        role,
         active: "true",
         twoFactorEnabled: "false",
         authVersion: 1,
@@ -289,7 +296,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     }
   });
 
-  app.delete("/api/admin/users/:id", requireSameOrigin, requireRole("admin"), async (req: Request, res: Response) => {
+  app.delete("/api/admin/users/:id", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     const userId = Number(req.params.id);
     if (!Number.isInteger(userId) || userId === req.adminUser?.id) {
       return res.status(400).json({ message: "Δεν μπορείτε να διαγράψετε τον τρέχοντα λογαριασμό." });
@@ -297,6 +304,9 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     const users = await storage.getAdminUsers();
     const target = users.find((user) => user.id === userId);
     if (!target) return res.status(404).json({ message: "Ο λογαριασμός δεν βρέθηκε." });
+    if (target.role === "owner" || target.username === "administrator") {
+      return res.status(403).json({ message: "Ο owner λογαριασμός administrator δεν μπορεί να διαγραφεί." });
+    }
     if (users.filter((user) => user.active !== "false").length <= 1) {
       return res.status(400).json({ message: "Πρέπει να παραμείνει τουλάχιστον ένας ενεργός διαχειριστής." });
     }
@@ -383,7 +393,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.post(api.articles.create.path, requireAdmin, async (req: Request, res: Response) => {
+  app.post(api.articles.create.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = articlePayloadSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.createArticle(parsed.data);
@@ -391,7 +401,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.patch(api.articles.update.path, requireAdmin, async (req: Request, res: Response) => {
+  app.patch(api.articles.update.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = articlePayloadSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.updateArticle(Number(req.params.id), parsed.data);
@@ -399,7 +409,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.delete(api.articles.delete.path, requireAdmin, async (req: Request, res: Response) => {
+  app.delete(api.articles.delete.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     await storage.deleteArticle(Number(req.params.id));
     audit(req, "article.deleted", { articleId: Number(req.params.id) });
     res.status(204).end();
@@ -411,7 +421,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(announcementsList);
   });
 
-  app.post("/api/announcements", requireAdmin, async (req: Request, res: Response) => {
+  app.post("/api/announcements", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = announcementPayloadSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const announcement = await storage.createAnnouncement(parsed.data);
@@ -419,13 +429,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(announcement);
   });
 
-  app.delete("/api/announcements/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/announcements/:id", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     await storage.deleteAnnouncement(Number(req.params.id));
     audit(req, "announcement.deleted", { announcementId: Number(req.params.id) });
     res.status(204).end();
   });
 
-  app.patch("/api/announcements/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.patch("/api/announcements/:id", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = announcementPayloadSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const announcement = await storage.updateAnnouncement(Number(req.params.id), parsed.data);
@@ -440,13 +450,22 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(publicSettings(settings));
   });
 
-  app.patch(api.settings.update.path, requireRole("admin"), async (req: Request, res: Response) => {
+  app.patch(api.settings.update.path, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
-    const { adminCode: _ignoredAdminCode, ...update } = parsed.data;
+    const { adminCode: _ignoredAdminCode, creditsEnabled: _ignoredCreditsEnabled, ...update } = parsed.data;
     const settings = await storage.updateSettings(update);
     audit(req, "settings.updated", { fields: Object.keys(update) });
     res.json(publicSettings(settings));
+  });
+
+  app.patch("/api/admin/credits", requireSameOrigin, requireRole("owner"), async (req: Request, res: Response) => {
+    if (req.body?.creditsEnabled !== "true" && req.body?.creditsEnabled !== "false") {
+      return res.status(400).json({ message: "Μη έγκυρη τιμή credits." });
+    }
+    const settings = await storage.updateSettings({ creditsEnabled: req.body.creditsEnabled });
+    audit(req, "credits.toggled", { enabled: req.body.creditsEnabled === "true" });
+    res.json({ creditsEnabled: settings.creditsEnabled });
   });
 
   // Category Articles
@@ -479,14 +498,14 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(comment);
   });
 
-  app.delete("/api/comments/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/comments/:id", requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
     await storage.deleteComment(Number(req.params.id));
     audit(req, "comment.deleted", { commentId: Number(req.params.id) });
     res.status(204).end();
   });
 
   // Reports
-  app.get("/api/comments/reports", requireAdmin, async (_req: Request, res: Response) => {
+  app.get("/api/comments/reports", requireRole("owner", "admin", "moderator"), async (_req: Request, res: Response) => {
     const reports = await storage.getReportedComments();
     res.json(reports);
   });
@@ -498,14 +517,14 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(report);
   });
 
-  app.delete("/api/comments/reports/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/comments/reports/:id", requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
     await storage.deleteReport(Number(req.params.id));
     audit(req, "comment_report.deleted", { reportId: Number(req.params.id) });
     res.status(204).end();
   });
 
   // Subscribers
-  app.get("/api/subscribers", requireAdmin, async (_req: Request, res: Response) => {
+  app.get("/api/subscribers", requireRole("owner", "admin"), async (_req: Request, res: Response) => {
     const subs = await storage.getSubscribers();
     res.json(subs);
   });
@@ -534,14 +553,14 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     }
   });
 
-  app.delete("/api/subscribers/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/subscribers/:id", requireRole("owner", "admin"), async (req: Request, res: Response) => {
     await storage.deleteSubscriber(Number(req.params.id));
     audit(req, "subscriber.deleted", { subscriberId: Number(req.params.id) });
     res.status(204).end();
   });
 
   // Contact Messages
-  app.get("/api/contacts", requireAdmin, async (_req: Request, res: Response) => {
+  app.get("/api/contacts", requireRole("owner", "admin"), async (_req: Request, res: Response) => {
     const msgs = await storage.getContacts();
     res.json(msgs);
   });
@@ -563,7 +582,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(msg);
   });
 
-  app.delete("/api/contacts/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/contacts/:id", requireRole("owner", "admin"), async (req: Request, res: Response) => {
     await storage.deleteContact(Number(req.params.id));
     audit(req, "contact.deleted", { contactId: Number(req.params.id) });
     res.status(204).end();

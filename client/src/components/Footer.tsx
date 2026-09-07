@@ -1,7 +1,7 @@
 import { MapPin, Phone, Mail, Copy, Check, ExternalLink, BookOpen, Calendar, Users, FileText } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { queryClient } from "@/lib/queryClient";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 function CopyableItem({ icon: Icon, text, label }: { icon: any; text: string; label: string }) {
@@ -52,31 +52,15 @@ export function Footer() {
     { label: "Μαθητές", href: "/students", icon: Users },
   ];
 
-  const handleCreditsContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault();
-    contextClicks.current += 1;
-    window.setTimeout(() => {
-      contextClicks.current = 0;
-    }, 1600);
-    if (contextClicks.current >= 2) {
-      contextClicks.current = 0;
-      setCreditsArmed(true);
-      toast({ title: "Credits control armed", description: "Κάντε αριστερό κλικ ξανά για έλεγχο διαχειριστή." });
-    }
-  };
-
-  const handleCreditsClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!creditsArmed) return;
-    event.preventDefault();
-    setCreditsArmed(false);
+  const toggleCredits = useCallback(async () => {
     const sessionResponse = await fetch("/api/admin/session", { credentials: "include" });
     const session = await sessionResponse.json().catch(() => ({}));
-    if (!session.authenticated || session.user?.role !== "admin") {
-      toast({ title: "Απαιτείται διαχειριστής", description: "Συνδεθείτε πρώτα στο Control Room για να αλλάξετε τα credits.", variant: "destructive" });
+    if (!session.authenticated || session.user?.role !== "owner") {
+      toast({ title: "Απαιτείται owner", description: "Συνδεθείτε με τον λογαριασμό administrator στο Control Room.", variant: "destructive" });
       return;
     }
     const nextValue = settings?.creditsEnabled === "false" ? "true" : "false";
-    const response = await fetch("/api/settings", {
+    const response = await fetch("/api/admin/credits", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -86,8 +70,39 @@ export function Footer() {
       toast({ title: "Αποτυχία", description: "Δεν ήταν δυνατή η αλλαγή των credits.", variant: "destructive" });
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     toast({ title: "Ενημερώθηκε", description: nextValue === "true" ? "Τα credits ενεργοποιήθηκαν." : "Τα credits απενεργοποιήθηκαν." });
+  }, [settings?.creditsEnabled, toast]);
+
+  useEffect(() => {
+    const handleHotkey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        void toggleCredits();
+      }
+    };
+    window.addEventListener("keydown", handleHotkey);
+    return () => window.removeEventListener("keydown", handleHotkey);
+  }, [toggleCredits]);
+
+  const handleCreditsContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    contextClicks.current += 1;
+    window.setTimeout(() => {
+      contextClicks.current = 0;
+    }, 1600);
+    if (contextClicks.current >= 2) {
+      contextClicks.current = 0;
+      setCreditsArmed(true);
+      toast({ title: "Credits control armed", description: "Κάντε αριστερό κλικ ξανά ή χρησιμοποιήστε Ctrl/Cmd + Shift + G." });
+    }
+  };
+
+  const handleCreditsClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!creditsArmed) return;
+    event.preventDefault();
+    setCreditsArmed(false);
+    await toggleCredits();
   };
 
   return (
