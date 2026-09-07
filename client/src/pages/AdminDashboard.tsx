@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, Edit2, Settings, Newspaper, ArrowLeft, Image as ImageIcon, Link as LinkIcon, FileText, BookOpen, Upload, X, Bell, Trophy, Flag, Mail, MapPin, Phone, Search, Users, Shield, Timer, LogOut, UserPlus, KeyRound, Smartphone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Announcement, ReportedComment, Subscriber, Contact } from "@shared/schema";
@@ -40,7 +40,7 @@ const roleOptions = [
 ];
 
 const rolePermissions: Record<string, string> = {
-  owner: "Όλα — owner administrator, credits και λογαριασμοί",
+  owner: "Owner",
   admin: "Περιεχόμενο, moderation, ιδιωτικά δεδομένα και λογαριασμοί",
   editor: "Άρθρα και ανακοινώσεις",
   moderator: "Σχόλια και αναφορές",
@@ -59,6 +59,9 @@ export default function AdminDashboard() {
   const isAuthenticated = adminSession?.authenticated === true;
   const twoFactorRequired = adminSession?.requiresTwoFactor === true;
   const canManageAccounts = adminSession?.user?.role === "owner" || adminSession?.user?.role === "admin";
+  const canManageSettings = canManageAccounts;
+  const canModerate = ["owner", "admin", "moderator"].includes(adminSession?.user?.role || "");
+  const canViewPrivateData = ["owner", "admin"].includes(adminSession?.user?.role || "");
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -294,7 +297,7 @@ export default function AdminDashboard() {
   });
   const { data: reportedComments, isLoading: reportsLoading } = useQuery<(ReportedComment & { comment: any })[]>({
     queryKey: ["/api/comments/reports"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && canModerate,
   });
   
   const [editingArticle, setEditingArticle] = useState<any>(null);
@@ -453,7 +456,7 @@ export default function AdminDashboard() {
 
   const { data: subscribers, isLoading: subsLoading } = useQuery<Subscriber[]>({
     queryKey: ["/api/subscribers"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && canViewPrivateData,
   });
 
   const deleteSubscriber = useMutation({
@@ -472,7 +475,7 @@ export default function AdminDashboard() {
 
   const { data: contactsList, isLoading: contactsLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && canViewPrivateData,
   });
 
   const deleteContact = useMutation({
@@ -615,17 +618,17 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <Tabs defaultValue="general" className="space-y-6">
+        <Tabs defaultValue={canManageSettings ? "general" : "articles"} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto bg-muted p-1 gap-1">
-            <TabsTrigger value="general" className="flex-1 min-w-[100px]">Γενικές</TabsTrigger>
-            <TabsTrigger value="pages" className="flex-1 min-w-[100px]">Σελίδες</TabsTrigger>
-            <TabsTrigger value="stats" className="flex-1 min-w-[100px]">Στατιστικά</TabsTrigger>
+            {canManageSettings && <TabsTrigger value="general" className="flex-1 min-w-[100px]">Γενικές</TabsTrigger>}
+            {canManageSettings && <TabsTrigger value="pages" className="flex-1 min-w-[100px]">Σελίδες</TabsTrigger>}
+            {canManageSettings && <TabsTrigger value="stats" className="flex-1 min-w-[100px]">Στατιστικά</TabsTrigger>}
             <TabsTrigger value="announcements" className="flex-1 min-w-[100px]">Ανακοινώσεις</TabsTrigger>
-            <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>
+            {canManageSettings && <TabsTrigger value="magazine" className="flex-1 min-w-[100px]">Περιοδικό</TabsTrigger>}
             <TabsTrigger value="articles" className="flex-1 min-w-[100px]">Άρθρα</TabsTrigger>
-            <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>
-            <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>
-            <TabsTrigger value="contacts" className="flex-1 min-w-[100px]">Μηνύματα</TabsTrigger>
+            {canModerate && <TabsTrigger value="moderation" className="flex-1 min-w-[100px]">Αναφορές</TabsTrigger>}
+            {canViewPrivateData && <TabsTrigger value="subscribers" className="flex-1 min-w-[100px]">Εγγραφές</TabsTrigger>}
+            {canViewPrivateData && <TabsTrigger value="contacts" className="flex-1 min-w-[100px]">Μηνύματα</TabsTrigger>}
             {canManageAccounts && <TabsTrigger value="accounts" className="flex-1 min-w-[100px]">Λογαριασμοί</TabsTrigger>}
           </TabsList>
 
@@ -688,7 +691,7 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-bold">{user.username}</p>
                               <p className="text-xs text-muted-foreground">
-                                {user.role} · {rolePermissions[user.role] || "Περιορισμένη πρόσβαση"} · 2FA: {user.twoFactorEnabled === "true" ? "ON" : "OFF"}
+                                {user.role === "owner" ? "owner" : `${user.role} · ${rolePermissions[user.role] || "Περιορισμένη πρόσβαση"}`} · 2FA: {user.twoFactorEnabled === "true" ? "ON" : "OFF"}
                               </p>
                             </div>
                             {user.id !== adminSession.user?.id && user.role !== "owner" && user.username !== "administrator" && (
@@ -869,6 +872,7 @@ export default function AdminDashboard() {
                   <DialogContent className="font-body">
                     <DialogHeader>
                       <DialogTitle className="font-display text-primary">Δημιουργία Ανακοίνωσης</DialogTitle>
+                      <DialogDescription>Δημοσιεύστε μια νέα ανακοίνωση για την κοινότητα του σχολείου.</DialogDescription>
                     </DialogHeader>
                     <form
                       className="space-y-4"
@@ -896,6 +900,7 @@ export default function AdminDashboard() {
                   <DialogContent className="font-body">
                     <DialogHeader>
                       <DialogTitle className="font-display text-primary">Επεξεργασία Ανακοίνωσης</DialogTitle>
+                      <DialogDescription>Ενημερώστε τον τίτλο ή το περιεχόμενο της ανακοίνωσης.</DialogDescription>
                     </DialogHeader>
                     {editingAnnouncement && (
                       <form
@@ -1287,6 +1292,10 @@ export default function AdminDashboard() {
                   <Dialog onOpenChange={(open) => !open && setNewArticleImages([])}>
                     <DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4"/> Νέο</Button></DialogTrigger>
                   <DialogContent className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="font-display text-primary">Νέο άρθρο</DialogTitle>
+                      <DialogDescription>Δημιουργήστε και δημοσιεύστε νέο περιεχόμενο.</DialogDescription>
+                    </DialogHeader>
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
@@ -1510,6 +1519,7 @@ export default function AdminDashboard() {
         <DialogContent key={editingArticle?.id || 'closed'} className="font-body max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-primary">Επεξεργασία Άρθρου</DialogTitle>
+            <DialogDescription>Ενημερώστε το περιεχόμενο, την κατηγορία ή τις εικόνες του άρθρου.</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();

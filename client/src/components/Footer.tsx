@@ -1,7 +1,7 @@
 import { MapPin, Phone, Mail, Copy, Check, ExternalLink, BookOpen, Calendar, Users, FileText } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
 import { queryClient } from "@/lib/queryClient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 function CopyableItem({ icon: Icon, text, label }: { icon: any; text: string; label: string }) {
@@ -31,8 +31,6 @@ function CopyableItem({ icon: Icon, text, label }: { icon: any; text: string; la
 export function Footer() {
   const { toast } = useToast();
   const { data: settings } = useSettings();
-  const contextClicks = useRef(0);
-  const [creditsArmed, setCreditsArmed] = useState(false);
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -76,7 +74,7 @@ export function Footer() {
 
   useEffect(() => {
     const handleHotkey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "g") {
+      if (!event.repeat && (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "g") {
         event.preventDefault();
         void toggleCredits();
       }
@@ -84,26 +82,6 @@ export function Footer() {
     window.addEventListener("keydown", handleHotkey);
     return () => window.removeEventListener("keydown", handleHotkey);
   }, [toggleCredits]);
-
-  const handleCreditsContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault();
-    contextClicks.current += 1;
-    window.setTimeout(() => {
-      contextClicks.current = 0;
-    }, 1600);
-    if (contextClicks.current >= 2) {
-      contextClicks.current = 0;
-      setCreditsArmed(true);
-      toast({ title: "Credits control armed", description: "Κάντε αριστερό κλικ ξανά ή χρησιμοποιήστε Ctrl/Cmd + Shift + G." });
-    }
-  };
-
-  const handleCreditsClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!creditsArmed) return;
-    event.preventDefault();
-    setCreditsArmed(false);
-    await toggleCredits();
-  };
 
   return (
     <footer className="bg-gradient-to-r from-primary via-primary/98 to-primary text-primary-foreground mt-auto relative overflow-hidden">
@@ -175,10 +153,8 @@ export function Footer() {
               href="https://github.com/GioSupremeX"
               target="_blank"
               rel="noopener noreferrer"
-              onContextMenu={handleCreditsContextMenu}
-              onClick={handleCreditsClick}
-              className={`mt-3 inline-flex items-center gap-1 text-xs transition-colors hover:text-white ${creditsArmed ? "text-white underline decoration-dashed underline-offset-4" : ""}`}
-              title={creditsArmed ? "Κάντε αριστερό κλικ για έλεγχο credits" : "Designed by GioSupremeX"}
+              className="mt-3 inline-flex items-center gap-1 text-xs transition-colors hover:text-white"
+              title="Designed by GioSupremeX"
             >
               Designed by <span className="font-semibold">GioSupremeX</span>
             </a>

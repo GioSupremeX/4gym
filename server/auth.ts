@@ -245,7 +245,7 @@ export function requireRole(...roles: string[]) {
 }
 
 export const adminRolePermissions: Record<string, string[]> = {
-  owner: ["Όλα", "Διαχείριση λογαριασμών", "Ρυθμίσεις", "Περιεχόμενο", "Αναφορές", "Ιδιωτικά μηνύματα"],
+  owner: ["Owner"],
   admin: ["Περιεχόμενο", "Αναφορές", "Ιδιωτικά μηνύματα", "Διαχείριση λογαριασμών"],
   editor: ["Άρθρα", "Ανακοινώσεις"],
   moderator: ["Σχόλια", "Αναφορές"],
