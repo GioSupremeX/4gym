@@ -100,7 +100,7 @@ async function optimizeImage(file: File): Promise<string> {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const [username, setUsername] = useState("administrator");
+  const [username, setUsername] = useState("");
   const [passcode, setPasscode] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
