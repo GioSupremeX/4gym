@@ -38,10 +38,14 @@ function getCooldownRemaining(ip: string, endpoint: string, seconds: number): nu
 
 const usernameSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/, "Το όνομα χρήστη πρέπει να έχει 3-64 χαρακτήρες.");
 const strongPasswordSchema = z.string().min(12, "Ο κωδικός πρέπει να έχει τουλάχιστον 12 χαρακτήρες.").max(256);
+const articleImagesSchema = z.array(z.string().max(7_000_000)).max(6).refine(
+  (images) => images.reduce((total, image) => total + image.length, 0) <= 8_000_000,
+  "Οι εικόνες του άρθρου είναι πολύ μεγάλες συνολικά.",
+);
 const articlePayloadSchema = insertArticleSchema.extend({
   title: z.string().trim().min(1).max(200),
   content: z.string().min(1).max(100_000),
-  imageUrls: z.array(z.string().max(7_000_000)).max(10).optional(),
+  imageUrls: articleImagesSchema.optional(),
 });
 const announcementPayloadSchema = insertAnnouncementSchema.extend({
   title: z.string().trim().min(1).max(200),

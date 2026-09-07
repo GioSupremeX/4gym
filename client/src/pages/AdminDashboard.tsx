@@ -46,6 +46,58 @@ const rolePermissions: Record<string, string> = {
   moderator: "Σχόλια και αναφορές",
 };
 
+const MAX_ARTICLE_IMAGES = 6;
+const MAX_IMAGE_EDGE = 1920;
+const MAX_COMPRESSED_IMAGE_BYTES = 1_200_000;
+
+function loadImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Η εικόνα δεν ήταν έγκυρη."));
+    image.src = source;
+  });
+}
+
+async function optimizeImage(file: File): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Δεν ήταν δυνατή η επεξεργασία της εικόνας.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const toBlob = (quality: number, type: string) => new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, type, quality);
+    });
+
+    let blob = await toBlob(0.82, "image/webp");
+    if (!blob || blob.type !== "image/webp") {
+      blob = await toBlob(0.82, "image/jpeg");
+    }
+    for (const quality of [0.72, 0.62, 0.52]) {
+      if (blob && blob.size <= MAX_COMPRESSED_IMAGE_BYTES) break;
+      blob = await toBlob(quality, blob?.type === "image/webp" ? "image/webp" : "image/jpeg");
+    }
+    if (!blob) throw new Error("Δεν ήταν δυνατή η συμπίεση της εικόνας.");
+    if (blob.size > MAX_COMPRESSED_IMAGE_BYTES) {
+      throw new Error("Η εικόνα παραμένει πολύ μεγάλη μετά τη συμπίεση.");
+    }
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Δεν ήταν δυνατή η ανάγνωση της εικόνας."));
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [username, setUsername] = useState("administrator");
@@ -492,18 +544,26 @@ export default function AdminDashboard() {
     },
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const files = event.target.files;
     if (!files) return;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        if (isEdit) setEditArticleImages(prev => [...prev, base64String]);
-        else setNewArticleImages(prev => [...prev, base64String]);
-      };
-      reader.readAsDataURL(file);
-    });
+    const currentCount = isEdit ? editArticleImages.length : newArticleImages.length;
+    const selectedFiles = Array.from(files).slice(0, Math.max(0, MAX_ARTICLE_IMAGES - currentCount));
+    event.target.value = "";
+    if (!selectedFiles.length) {
+      toast({ title: "Όριο εικόνων", description: `Μπορείτε να έχετε έως ${MAX_ARTICLE_IMAGES} εικόνες ανά άρθρο.`, variant: "destructive" });
+      return;
+    }
+    try {
+      const optimizedImages = await Promise.all(selectedFiles.map(optimizeImage));
+      if (isEdit) setEditArticleImages((previous) => [...previous, ...optimizedImages].slice(0, MAX_ARTICLE_IMAGES));
+      else setNewArticleImages((previous) => [...previous, ...optimizedImages].slice(0, MAX_ARTICLE_IMAGES));
+      if (selectedFiles.length < files.length) {
+        toast({ title: "Όριο εικόνων", description: `Κρατήθηκαν οι πρώτες ${MAX_ARTICLE_IMAGES} εικόνες.` });
+      }
+    } catch (error) {
+      toast({ title: "Αποτυχία εικόνας", description: error instanceof Error ? error.message : "Η εικόνα δεν μπόρεσε να προστεθεί.", variant: "destructive" });
+    }
   };
 
   if (authLoading || settingsLoading || articlesLoading || annLoading) {
@@ -676,7 +736,7 @@ export default function AdminDashboard() {
                       >
                         {roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label} — {role.description}</option>)}
                       </select>
-                      <p className="text-xs text-muted-foreground">Τα δικαιώματα εφαρμόζονται server-side και ο owner administrator δεν μπορεί να διαγραφεί.</p>
+                      <p className="text-xs text-muted-foreground">Τα δικαιώματα εφαρμόζονται server-side και ο owner δεν μπορεί να διαγραφεί.</p>
                       <Button type="submit" className="w-full" disabled={createAdminUser.isPending}>
                         {createAdminUser.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
                         Δημιουργία

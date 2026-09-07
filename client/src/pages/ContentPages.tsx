@@ -71,7 +71,7 @@ export function CategoryPage({ category, title }: { category: string, title: str
               {art.imageUrls && art.imageUrls.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                   {art.imageUrls.map((url, i) => (
-                    <img key={i} src={url} alt="" className="rounded-2xl object-cover aspect-video paper-shadow-lg hover:paper-shadow-lg smooth-transition" />
+                    <img key={i} src={url} alt="" loading="lazy" decoding="async" className="rounded-2xl object-cover aspect-video paper-shadow-lg hover:paper-shadow-lg smooth-transition" />
                   ))}
                 </div>
               )}
@@ -189,7 +189,7 @@ export function ArticlePage({ params }: { params: { id: string } }) {
                     <Card className="cursor-pointer hover:shadow-xl transition-all h-full border-2 border-primary/5 hover:border-primary/20 overflow-hidden group">
                       {rec.imageUrls?.[0] && (
                         <div className="aspect-video overflow-hidden">
-                          <img src={rec.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <img src={rec.imageUrls[0]} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                       )}
                       <CardContent className="p-4 space-y-2">
@@ -253,7 +253,7 @@ export function AllArticlesPage() {
             <Card className="cursor-pointer hover:shadow-2xl transition-all border-2 border-primary/5 hover:border-primary/20 rounded-3xl overflow-hidden h-full flex flex-col group">
               {art.imageUrls?.[0] && (
                 <div className="aspect-video overflow-hidden relative">
-                  <img src={art.imageUrls[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <img src={art.imageUrls[0]} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               )}
@@ -324,7 +324,7 @@ function ArticleCard({ article }: { article: Article }) {
         {article.imageUrls && article.imageUrls.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {article.imageUrls.map((url, i) => (
-              <img key={i} src={url} alt="" className="rounded-xl object-cover aspect-video shadow-md" />
+              <img key={i} src={url} alt="" loading="lazy" decoding="async" className="rounded-xl object-cover aspect-video shadow-md" />
             ))}
           </div>
         )}
