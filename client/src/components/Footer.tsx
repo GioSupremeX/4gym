@@ -1,6 +1,7 @@
 import { MapPin, Phone, Mail, Copy, Check, ExternalLink, BookOpen, Calendar, Users, FileText } from "lucide-react";
 import { useSettings } from "@/hooks/use-articles";
-import { useState } from "react";
+import { queryClient } from "@/lib/queryClient";
+import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 function CopyableItem({ icon: Icon, text, label }: { icon: any; text: string; label: string }) {
@@ -28,7 +29,10 @@ function CopyableItem({ icon: Icon, text, label }: { icon: any; text: string; la
 }
 
 export function Footer() {
+  const { toast } = useToast();
   const { data: settings } = useSettings();
+  const contextClicks = useRef(0);
+  const [creditsArmed, setCreditsArmed] = useState(false);
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -47,6 +51,44 @@ export function Footer() {
     { label: "Δραστηριότητες", href: "/activities", icon: Calendar },
     { label: "Μαθητές", href: "/students", icon: Users },
   ];
+
+  const handleCreditsContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    contextClicks.current += 1;
+    window.setTimeout(() => {
+      contextClicks.current = 0;
+    }, 1600);
+    if (contextClicks.current >= 2) {
+      contextClicks.current = 0;
+      setCreditsArmed(true);
+      toast({ title: "Credits control armed", description: "Κάντε αριστερό κλικ ξανά για έλεγχο διαχειριστή." });
+    }
+  };
+
+  const handleCreditsClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!creditsArmed) return;
+    event.preventDefault();
+    setCreditsArmed(false);
+    const sessionResponse = await fetch("/api/admin/session", { credentials: "include" });
+    const session = await sessionResponse.json().catch(() => ({}));
+    if (!session.authenticated || session.user?.role !== "admin") {
+      toast({ title: "Απαιτείται διαχειριστής", description: "Συνδεθείτε πρώτα στο Control Room για να αλλάξετε τα credits.", variant: "destructive" });
+      return;
+    }
+    const nextValue = settings?.creditsEnabled === "false" ? "true" : "false";
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ creditsEnabled: nextValue }),
+    });
+    if (!response.ok) {
+      toast({ title: "Αποτυχία", description: "Δεν ήταν δυνατή η αλλαγή των credits.", variant: "destructive" });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+    toast({ title: "Ενημερώθηκε", description: nextValue === "true" ? "Τα credits ενεργοποιήθηκαν." : "Τα credits απενεργοποιήθηκαν." });
+  };
 
   return (
     <footer className="bg-gradient-to-r from-primary via-primary/98 to-primary text-primary-foreground mt-auto relative overflow-hidden">
@@ -113,6 +155,19 @@ export function Footer() {
 
         <div className="mt-16 border-t border-white/20 pt-8 text-center text-sm text-primary-foreground/70">
           <p>© {currentYear} {settings?.schoolName || "4ο Γυμνάσιο Ρόδου - Καζούλλειο"} · Σχολικό Έτος {schoolYear}</p>
+          {settings?.creditsEnabled !== "false" && (
+            <a
+              href="https://github.com/GioSupremeX"
+              target="_blank"
+              rel="noopener noreferrer"
+              onContextMenu={handleCreditsContextMenu}
+              onClick={handleCreditsClick}
+              className={`mt-3 inline-flex items-center gap-1 text-xs transition-colors hover:text-white ${creditsArmed ? "text-white underline decoration-dashed underline-offset-4" : ""}`}
+              title={creditsArmed ? "Κάντε αριστερό κλικ για έλεγχο credits" : "Designed by GioSupremeX"}
+            >
+              Designed by <span className="font-semibold">GioSupremeX</span>
+            </a>
+          )}
         </div>
       </div>
     </footer>

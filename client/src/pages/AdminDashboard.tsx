@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Announcement, ReportedComment, Subscriber, Contact } from "@shared/schema";
+import { QRCodeSVG } from "qrcode.react";
 
 type AdminUserSummary = {
   id: number;
@@ -270,6 +271,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       setTwoFactorSetup(null);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/session"] });
       toast({ title: "Ενεργοποιήθηκε", description: "Η επαλήθευση δύο βημάτων είναι πλέον ενεργή." });
     },
     onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
@@ -280,6 +282,7 @@ export default function AdminDashboard() {
   });
   
   const [editingArticle, setEditingArticle] = useState<any>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [newArticleImages, setNewArticleImages] = useState<string[]>([]);
   const [editArticleImages, setEditArticleImages] = useState<string[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -377,6 +380,26 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
       toast({ title: "Επιτυχία", description: "Η ανακοίνωση διαγράφηκε." });
     },
+  });
+
+  const updateAnnouncement = useMutation({
+    mutationFn: async ({ id, ...values }: { id: number; title: string; content: string }) => {
+      const res = await fetch(`/api/announcements/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(values),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Αποτυχία ενημέρωσης ανακοίνωσης.");
+      return body;
+    },
+    onSuccess: () => {
+      setEditingAnnouncement(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      toast({ title: "Επιτυχία", description: "Η ανακοίνωση ενημερώθηκε." });
+    },
+    onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
   });
 
   const deleteComment = useMutation({
@@ -718,10 +741,16 @@ export default function AdminDashboard() {
                         </Button>
                       ) : (
                         <div className="space-y-3">
-                          <div className="rounded-lg bg-muted p-3 text-xs break-all">
-                            <strong>Secret:</strong> {twoFactorSetup.secret}
+                          <div className="flex justify-center rounded-xl border bg-white p-4">
+                            <QRCodeSVG value={twoFactorSetup.otpauthUri} size={220} includeMargin level="M" />
                           </div>
-                          <p className="text-xs text-muted-foreground">Προσθέστε το secret στην authenticator app και αποθηκεύστε τους recovery codes:</p>
+                          <p className="text-sm font-semibold text-primary">
+                            Σκανάρετε αυτό το QR με Google Authenticator, Microsoft Authenticator ή άλλη εφαρμογή OTP.
+                          </p>
+                          <div className="rounded-lg bg-muted p-3 text-xs break-all">
+                            <strong>Εναλλακτικά secret:</strong> {twoFactorSetup.secret}
+                          </div>
+                          <p className="text-xs text-muted-foreground">Αποθηκεύστε τους recovery codes σε ασφαλές σημείο πριν επιβεβαιώσετε:</p>
                           <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3 text-xs font-mono">
                             {twoFactorSetup.recoveryCodes.map((code) => <span key={code}>{code}</span>)}
                           </div>
@@ -838,6 +867,36 @@ export default function AdminDashboard() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                <Dialog open={!!editingAnnouncement} onOpenChange={(open) => !open && setEditingAnnouncement(null)}>
+                  <DialogContent className="font-body">
+                    <DialogHeader>
+                      <DialogTitle className="font-display text-primary">Επεξεργασία Ανακοίνωσης</DialogTitle>
+                    </DialogHeader>
+                    {editingAnnouncement && (
+                      <form
+                        className="space-y-4"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const values = Object.fromEntries(new FormData(event.currentTarget)) as { title: string; content: string };
+                          updateAnnouncement.mutate({ id: editingAnnouncement.id, ...values });
+                        }}
+                      >
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold uppercase tracking-wider">Τίτλος</label>
+                          <Input name="title" defaultValue={editingAnnouncement.title} required />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold uppercase tracking-wider">Περιεχόμενο</label>
+                          <Textarea name="content" defaultValue={editingAnnouncement.content} required rows={8} />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={updateAnnouncement.isPending}>
+                          {updateAnnouncement.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          Αποθήκευση αλλαγών
+                        </Button>
+                      </form>
+                    )}
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
@@ -847,9 +906,22 @@ export default function AdminDashboard() {
                         <h4 className="font-bold">{ann.title}</h4>
                         <p className="text-xs text-muted-foreground uppercase">{new Date(ann.publishedAt).toLocaleDateString("el-GR")}</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteAnnouncement.mutate(ann.id)}>
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingAnnouncement(ann)} aria-label={`Επεξεργασία ${ann.title}`}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => {
+                            if (window.confirm(`Να διαγραφεί η ανακοίνωση «${ann.title}»;`)) deleteAnnouncement.mutate(ann.id);
+                          }}
+                          aria-label={`Διαγραφή ${ann.title}`}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -887,6 +959,23 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Hero Image</label>
                       <Input name="heroImageUrl" defaultValue={settings?.heroImageUrl || ""} placeholder="https://..." />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-primary/10 bg-primary/5 p-4">
+                    <div>
+                      <p className="font-bold text-primary">Credits δημιουργού</p>
+                      <p className="text-xs text-muted-foreground">Εμφανίζει το “Designed by GioSupremeX” με σύνδεσμο στο GitHub.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">{settings?.creditsEnabled !== "false" ? "ON" : "OFF"}</span>
+                      <Switch
+                        defaultChecked={settings?.creditsEnabled !== "false"}
+                        onCheckedChange={(checked) => {
+                          const input = document.getElementById("creditsEnabled-hidden") as HTMLInputElement;
+                          if (input) input.value = checked ? "true" : "false";
+                        }}
+                      />
+                      <input type="hidden" id="creditsEnabled-hidden" name="creditsEnabled" defaultValue={settings?.creditsEnabled || "true"} />
                     </div>
                   </div>
                   {/* ── Spam Protection Section ── */}

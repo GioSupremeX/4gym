@@ -1,0 +1,1 @@
+- [Admin authentication](admin-authentication.md) — named accounts, persistent lockouts, QR-based SHA-256 TOTP, recovery codes, and server-side role enforcement are the security baseline.

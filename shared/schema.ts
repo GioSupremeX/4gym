@@ -61,6 +61,7 @@ export const siteSettings = pgTable("site_settings", {
   commentsEnabled: text("comments_enabled").notNull().default("true"),
   messagesEnabled: text("messages_enabled").notNull().default("true"),
   subscribeEnabled: text("subscribe_enabled").notNull().default("true"),
+  creditsEnabled: text("credits_enabled").notNull().default("true"),
   commentCooldown: text("comment_cooldown").notNull().default("60"),
   messageCooldown: text("message_cooldown").notNull().default("60"),
   subscribeCooldown: text("subscribe_cooldown").notNull().default("300"),

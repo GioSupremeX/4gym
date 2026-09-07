@@ -425,13 +425,22 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.status(204).end();
   });
 
+  app.patch("/api/announcements/:id", requireAdmin, async (req: Request, res: Response) => {
+    const parsed = announcementPayloadSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(parsed.error);
+    const announcement = await storage.updateAnnouncement(Number(req.params.id), parsed.data);
+    if (!announcement) return res.status(404).json({ message: "Η ανακοίνωση δεν βρέθηκε." });
+    audit(req, "announcement.updated", { announcementId: announcement.id });
+    res.json(announcement);
+  });
+
   // Settings
   app.get(api.settings.get.path, async (_req: Request, res: Response) => {
     const settings = await storage.getSettings();
     res.json(publicSettings(settings));
   });
 
-  app.patch(api.settings.update.path, requireAdmin, async (req: Request, res: Response) => {
+  app.patch(api.settings.update.path, requireRole("admin"), async (req: Request, res: Response) => {
     const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const { adminCode: _ignoredAdminCode, ...update } = parsed.data;

@@ -99,6 +99,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async updateAnnouncement(id: number, update: Partial<InsertAnnouncement>): Promise<Announcement | undefined> {
+    const [updated] = await db.update(announcements).set(update).where(eq(announcements.id, id)).returning();
+    return updated;
+  }
+
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
@@ -112,6 +117,7 @@ export class DatabaseStorage implements IStorage {
     const defaults = {
       messagesEnabled: "true",
       subscribeEnabled: "true",
+      creditsEnabled: "true",
       commentCooldown: "60",
       messageCooldown: "60",
       subscribeCooldown: "300",
