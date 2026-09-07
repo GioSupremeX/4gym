@@ -1,3 +1,0 @@
-- [Admin authentication](admin-authentication.md) — named accounts, persistent lockouts, QR-based SHA-256 TOTP, recovery codes, and server-side role enforcement are the security baseline.
-- [Article image storage](article-image-storage.md) — inline article images are compressed in the browser and bounded server-side to protect database and mobile bandwidth.
-- [Dependency security updates](dependency-security-updates.md) — keep packages pinned to audited versions and use reviewed weekly update proposals, never runtime self-updates.
