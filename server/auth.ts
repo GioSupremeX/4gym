@@ -257,6 +257,18 @@ export function requireSameOrigin(req: Request, res: Response, next: NextFunctio
     res.status(403).json({ message: "Μη έγκυρη προέλευση αιτήματος." });
     return;
   }
+  const referer = req.get("referer");
+  if (!origin && referer) {
+    try {
+      if (new URL(referer).origin !== `${req.protocol}://${req.get("host")}`) {
+        res.status(403).json({ message: "Μη έγκυρη προέλευση αιτήματος." });
+        return;
+      }
+    } catch {
+      res.status(403).json({ message: "Μη έγκυρη προέλευση αιτήματος." });
+      return;
+    }
+  }
   next();
 }
 

@@ -145,7 +145,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     });
   });
 
-  app.post("/api/admin/login", async (req: Request, res: Response) => {
+  app.post("/api/admin/login", requireSameOrigin, async (req: Request, res: Response) => {
     const lockedFor = await getLoginLockout(req);
     if (lockedFor > 0) {
       res.setHeader("Retry-After", lockedFor);
@@ -211,7 +211,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json({ authenticated: true, user: safeUser(user) });
   });
 
-  app.post("/api/admin/verify-2fa", async (req: Request, res: Response) => {
+  app.post("/api/admin/verify-2fa", requireSameOrigin, async (req: Request, res: Response) => {
     const pendingUserId = req.session?.pendingTwoFactorUserId;
     if (!pendingUserId || !req.session.pendingTwoFactorExpiresAt || req.session.pendingTwoFactorExpiresAt < Date.now()) {
       return res.status(401).json({ message: "Η επαλήθευση δύο βημάτων έληξε." });
@@ -397,7 +397,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.post(api.articles.create.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.post(api.articles.create.path, requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = articlePayloadSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.createArticle(parsed.data);
@@ -405,7 +405,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.patch(api.articles.update.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.patch(api.articles.update.path, requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = articlePayloadSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const article = await storage.updateArticle(Number(req.params.id), parsed.data);
@@ -413,7 +413,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(article);
   });
 
-  app.delete(api.articles.delete.path, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.delete(api.articles.delete.path, requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     await storage.deleteArticle(Number(req.params.id));
     audit(req, "article.deleted", { articleId: Number(req.params.id) });
     res.status(204).end();
@@ -425,7 +425,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(announcementsList);
   });
 
-  app.post("/api/announcements", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.post("/api/announcements", requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = announcementPayloadSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const announcement = await storage.createAnnouncement(parsed.data);
@@ -433,13 +433,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(announcement);
   });
 
-  app.delete("/api/announcements/:id", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.delete("/api/announcements/:id", requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     await storage.deleteAnnouncement(Number(req.params.id));
     audit(req, "announcement.deleted", { announcementId: Number(req.params.id) });
     res.status(204).end();
   });
 
-  app.patch("/api/announcements/:id", requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
+  app.patch("/api/announcements/:id", requireSameOrigin, requireRole("owner", "admin", "editor"), async (req: Request, res: Response) => {
     const parsed = announcementPayloadSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const announcement = await storage.updateAnnouncement(Number(req.params.id), parsed.data);
@@ -454,7 +454,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(publicSettings(settings));
   });
 
-  app.patch(api.settings.update.path, requireRole("owner", "admin"), async (req: Request, res: Response) => {
+  app.patch(api.settings.update.path, requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const { adminCode: _ignoredAdminCode, creditsEnabled: _ignoredCreditsEnabled, ...update } = parsed.data;
@@ -502,7 +502,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(comment);
   });
 
-  app.delete("/api/comments/:id", requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
+  app.delete("/api/comments/:id", requireSameOrigin, requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
     await storage.deleteComment(Number(req.params.id));
     audit(req, "comment.deleted", { commentId: Number(req.params.id) });
     res.status(204).end();
@@ -521,7 +521,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(report);
   });
 
-  app.delete("/api/comments/reports/:id", requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
+  app.delete("/api/comments/reports/:id", requireSameOrigin, requireRole("owner", "admin", "moderator"), async (req: Request, res: Response) => {
     await storage.deleteReport(Number(req.params.id));
     audit(req, "comment_report.deleted", { reportId: Number(req.params.id) });
     res.status(204).end();
@@ -557,7 +557,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     }
   });
 
-  app.delete("/api/subscribers/:id", requireRole("owner", "admin"), async (req: Request, res: Response) => {
+  app.delete("/api/subscribers/:id", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     await storage.deleteSubscriber(Number(req.params.id));
     audit(req, "subscriber.deleted", { subscriberId: Number(req.params.id) });
     res.status(204).end();
@@ -586,7 +586,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(msg);
   });
 
-  app.delete("/api/contacts/:id", requireRole("owner", "admin"), async (req: Request, res: Response) => {
+  app.delete("/api/contacts/:id", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
     await storage.deleteContact(Number(req.params.id));
     audit(req, "contact.deleted", { contactId: Number(req.params.id) });
     res.status(204).end();
