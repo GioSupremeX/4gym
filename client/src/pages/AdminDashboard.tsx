@@ -49,6 +49,8 @@ const rolePermissions: Record<string, string> = {
 const MAX_ARTICLE_IMAGES = 6;
 const MAX_IMAGE_EDGE = 1920;
 const MAX_COMPRESSED_IMAGE_BYTES = 1_200_000;
+const MAX_SETTING_IMAGE_EDGE = 1600;
+const MAX_SETTING_IMAGE_BYTES = 450_000;
 
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -59,11 +61,22 @@ function loadImage(source: string): Promise<HTMLImageElement> {
   });
 }
 
-async function optimizeImage(file: File): Promise<string> {
+async function optimizeImage(
+  file: File,
+  options: { maxEdge?: number; maxBytes?: number } = {},
+): Promise<string> {
+  const maxEdge = options.maxEdge ?? MAX_IMAGE_EDGE;
+  const maxBytes = options.maxBytes ?? MAX_COMPRESSED_IMAGE_BYTES;
+  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+    throw new Error("Επιλέξτε εικόνα JPG, PNG, WebP ή GIF.");
+  }
+  if (file.size > 25_000_000) {
+    throw new Error("Το αρχικό αρχείο είναι πολύ μεγάλο. Επιλέξτε εικόνα έως 25 MB.");
+  }
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
-    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -80,11 +93,11 @@ async function optimizeImage(file: File): Promise<string> {
       blob = await toBlob(0.82, "image/jpeg");
     }
     for (const quality of [0.72, 0.62, 0.52]) {
-      if (blob && blob.size <= MAX_COMPRESSED_IMAGE_BYTES) break;
+      if (blob && blob.size <= maxBytes) break;
       blob = await toBlob(quality, blob?.type === "image/webp" ? "image/webp" : "image/jpeg");
     }
     if (!blob) throw new Error("Δεν ήταν δυνατή η συμπίεση της εικόνας.");
-    if (blob.size > MAX_COMPRESSED_IMAGE_BYTES) {
+    if (blob.size > maxBytes) {
       throw new Error("Η εικόνα παραμένει πολύ μεγάλη μετά τη συμπίεση.");
     }
     return await new Promise<string>((resolve, reject) => {
@@ -98,6 +111,89 @@ async function optimizeImage(file: File): Promise<string> {
   }
 }
 
+function SettingsImageField({
+  label,
+  name,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { toast } = useToast();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const importImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      onChange(await optimizeImage(file, {
+        maxEdge: MAX_SETTING_IMAGE_EDGE,
+        maxBytes: MAX_SETTING_IMAGE_BYTES,
+      }));
+      toast({ title: "Η εικόνα προστέθηκε", description: "Θα αποθηκευτεί όταν πατήσετε αποθήκευση." });
+    } catch (error) {
+      toast({
+        title: "Δεν ήταν δυνατή η εισαγωγή",
+        description: error instanceof Error ? error.message : "Ελέγξτε τον τύπο και το μέγεθος της εικόνας.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 min-w-0">
+      <label htmlFor={`${name}-url`} className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{label}</label>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input
+          id={`${name}-url`}
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Επικολλήστε σύνδεσμο εικόνας ή εισαγάγετε αρχείο"
+          autoComplete="off"
+        />
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={importImage}
+          aria-label={`Εισαγωγή εικόνας: ${label}`}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          onClick={() => fileInput.current?.click()}
+          disabled={isImporting}
+        >
+          {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          {isImporting ? "Επεξεργασία…" : "Εισαγωγή"}
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" className="shrink-0" onClick={() => onChange("")}>
+            <X className="mr-2 h-4 w-4" /> Αφαίρεση
+          </Button>
+        )}
+      </div>
+      {value && (
+        <div className="rounded-md border bg-muted/20 p-2">
+          <img src={value} alt={`Προεπισκόπηση: ${label}`} loading="lazy" decoding="async" className="max-h-28 max-w-full object-contain" />
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">JPG, PNG, WebP ή GIF · έως 25 MB πριν τη συμπίεση.</p>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [username, setUsername] = useState("");
@@ -105,6 +201,11 @@ export default function AdminDashboard() {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { data: settings, isLoading: settingsLoading } = useSettings();
+  const [settingsImageUrls, setSettingsImageUrls] = useState({
+    logoUrl: "",
+    heroImageUrl: "",
+    magazineImageUrl: "",
+  });
   const { data: adminSession, isLoading: authLoading } = useQuery<AdminSession>({
     queryKey: ["/api/admin/session"],
   });
@@ -116,6 +217,15 @@ export default function AdminDashboard() {
   const canManageSettings = canManageAccounts;
   const canModerate = ["owner", "admin", "moderator"].includes(adminSession?.user?.role || "");
   const canViewPrivateData = ["owner", "admin"].includes(adminSession?.user?.role || "");
+
+  useEffect(() => {
+    if (!settings) return;
+    setSettingsImageUrls({
+      logoUrl: settings.logoUrl || "",
+      heroImageUrl: settings.heroImageUrl || "",
+      magazineImageUrl: settings.magazineImageUrl || "",
+    });
+  }, [settings?.logoUrl, settings?.heroImageUrl, settings?.magazineImageUrl]);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -584,7 +694,7 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      const optimizedImages = await Promise.all(selectedFiles.map(optimizeImage));
+      const optimizedImages = await Promise.all(selectedFiles.map((file) => optimizeImage(file)));
       if (isEdit) setEditArticleImages((previous) => [...previous, ...optimizedImages].slice(0, MAX_ARTICLE_IMAGES));
       else setNewArticleImages((previous) => [...previous, ...optimizedImages].slice(0, MAX_ARTICLE_IMAGES));
       if (selectedFiles.length < files.length) {
@@ -1106,16 +1216,20 @@ export default function AdminDashboard() {
                       <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Όνομα Σχολείου</label>
                       <Input name="schoolName" defaultValue={settings?.schoolName} />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Λογοτύπου</label>
-                      <Input name="logoUrl" defaultValue={settings?.logoUrl || ""} placeholder="https://..." />
-                    </div>
+                      <SettingsImageField
+                        label="Λογότυπο"
+                        name="logoUrl"
+                        value={settingsImageUrls.logoUrl}
+                        onChange={(logoUrl) => setSettingsImageUrls((current) => ({ ...current, logoUrl }))}
+                      />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Hero Image</label>
-                      <Input name="heroImageUrl" defaultValue={settings?.heroImageUrl || ""} placeholder="https://..." />
-                    </div>
+                      <SettingsImageField
+                        label="Κεντρική εικόνα"
+                        name="heroImageUrl"
+                        value={settingsImageUrls.heroImageUrl}
+                        onChange={(heroImageUrl) => setSettingsImageUrls((current) => ({ ...current, heroImageUrl }))}
+                      />
                   </div>
                   {/* ── Spam Protection Section ── */}
                   <Separator className="my-4" />
@@ -1291,10 +1405,12 @@ export default function AdminDashboard() {
                     <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Τίτλος Περιοδικού</label>
                     <Input name="magazineTitle" defaultValue={settings?.magazineTitle} placeholder="Τίτλος" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">URL Εικόνας Εξωφύλλου</label>
-                    <Input name="magazineImageUrl" defaultValue={settings?.magazineImageUrl} placeholder="URL Εικόνας" />
-                  </div>
+                  <SettingsImageField
+                    label="Εικόνα εξωφύλλου περιοδικού"
+                    name="magazineImageUrl"
+                    value={settingsImageUrls.magazineImageUrl}
+                    onChange={(magazineImageUrl) => setSettingsImageUrls((current) => ({ ...current, magazineImageUrl }))}
+                  />
                   <div className="space-y-2">
                     <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Κείμενο Κουμπιού</label>
                     <Input name="magazineButtonLabel" defaultValue={settings?.magazineButtonLabel} placeholder="Label Κουμπιού" />

@@ -47,6 +47,36 @@ const articlePayloadSchema = insertArticleSchema.extend({
   content: z.string().min(1).max(100_000),
   imageUrls: articleImagesSchema.optional(),
 });
+const settingsPayloadSchema = insertSiteSettingsSchema.partial().superRefine((settings, context) => {
+  const imageFields = ["logoUrl", "heroImageUrl", "magazineImageUrl"] as const;
+  let totalInlineImageCharacters = 0;
+  for (const field of imageFields) {
+    const value = settings[field];
+    if (typeof value !== "string" || !value.startsWith("data:")) continue;
+    if (!/^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: "Οι εικόνες πρέπει να είναι έγκυρα αρχεία JPG, PNG ή WebP.",
+      });
+      continue;
+    }
+    if (value.length > 700_000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: "Η εικόνα είναι πολύ μεγάλη. Συμπιέστε την πριν την αποθήκευση.",
+      });
+    }
+    totalInlineImageCharacters += value.length;
+  }
+  if (totalInlineImageCharacters > 1_800_000) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Το συνολικό μέγεθος των εισαγόμενων εικόνων είναι πολύ μεγάλο.",
+    });
+  }
+});
 const announcementPayloadSchema = insertAnnouncementSchema.extend({
   title: z.string().trim().min(1).max(200),
   content: z.string().min(1).max(100_000),
@@ -482,7 +512,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
   });
 
   app.patch(api.settings.update.path, requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
-    const parsed = insertSiteSettingsSchema.partial().safeParse(req.body);
+    const parsed = settingsPayloadSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json(parsed.error);
     const { adminCode: _ignoredAdminCode, creditsEnabled: _ignoredCreditsEnabled, ...update } = parsed.data;
     const settings = await storage.updateSettings(update);
