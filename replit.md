@@ -40,7 +40,7 @@ Premium full-stack school website for "4ο Γυμνάσιο Ρόδου – Κα�
 
 ## Admin Dashboard
 
-Access at `/secret/edit`. Passcode is stored in `site_settings.adminCode` (default: `123`). Auto-login via `?passcode=123` query parameter.
+Access the Control Room at `/secret/edit`. Sign in with a named administrator account. Do not put credentials in URLs or source files. The owner account is protected, and administrative access is enforced by the server.
 
 ## User Preferences
 - Light mode default (dark mode available)
