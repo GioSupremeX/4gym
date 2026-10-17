@@ -111,6 +111,8 @@ export default function AdminDashboard() {
   const isAuthenticated = adminSession?.authenticated === true;
   const twoFactorRequired = adminSession?.requiresTwoFactor === true;
   const canManageAccounts = adminSession?.user?.role === "owner" || adminSession?.user?.role === "admin";
+  const isOwner = adminSession?.user?.role === "owner";
+  const ownerTwoFactorPending = isOwner && adminSession?.user?.twoFactorEnabled !== "true";
   const canManageSettings = canManageAccounts;
   const canModerate = ["owner", "admin", "moderator"].includes(adminSession?.user?.role || "");
   const canViewPrivateData = ["owner", "admin"].includes(adminSession?.user?.role || "");
@@ -236,7 +238,10 @@ export default function AdminDashboard() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [twoFactorConfirmCode, setTwoFactorConfirmCode] = useState("");
+  const [recoveryCodeTest, setRecoveryCodeTest] = useState("");
+  const [recoveryCodeTested, setRecoveryCodeTested] = useState(false);
   const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; otpauthUri: string; recoveryCodes: string[] } | null>(null);
+  const [activeTab, setActiveTab] = useState(canManageSettings ? "general" : "articles");
 
   const createAdminUser = useMutation({
     mutationFn: async () => {
@@ -322,6 +327,8 @@ export default function AdminDashboard() {
     },
     onSuccess: (body) => {
       setTwoFactorSetup(body);
+      setRecoveryCodeTest("");
+      setRecoveryCodeTested(false);
       toast({ title: "Έτοιμο για ενεργοποίηση", description: "Αποθηκεύστε τους recovery codes πριν συνεχίσετε." });
     },
     onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
@@ -346,6 +353,28 @@ export default function AdminDashboard() {
       toast({ title: "Ενεργοποιήθηκε", description: "Η επαλήθευση δύο βημάτων είναι πλέον ενεργή." });
     },
     onError: (error) => toast({ title: "Σφάλμα", description: error.message, variant: "destructive" }),
+  });
+
+  const testRecoveryCode = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetch("/api/admin/2fa/test-recovery-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Ο recovery code δεν είναι σωστός.");
+      return body;
+    },
+    onSuccess: () => {
+      setRecoveryCodeTested(true);
+      toast({ title: "Recovery code ελέγχθηκε", description: "Ο κωδικός είναι έγκυρος. Συνεχίστε με τον κωδικό της εφαρμογής." });
+    },
+    onError: (error) => {
+      setRecoveryCodeTested(false);
+      toast({ title: "Σφάλμα", description: error.message, variant: "destructive" });
+    },
   });
   const { data: reportedComments, isLoading: reportsLoading } = useQuery<(ReportedComment & { comment: any })[]>({
     queryKey: ["/api/comments/reports"],
@@ -678,7 +707,23 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <Tabs defaultValue={canManageSettings ? "general" : "articles"} className="space-y-6">
+        {ownerTwoFactorPending && (
+          <Card className="border-2 border-amber-500/40 bg-amber-50 shadow-lg">
+            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-amber-950">Ο owner λογαριασμός χρειάζεται 2FA</p>
+                <p className="text-sm text-amber-900/80">
+                  Ρυθμίστε authenticator app και κρατήστε τους recovery codes. Οι τρέχουσες λειτουργίες παραμένουν διαθέσιμες κατά τη ρύθμιση· μετά την ενεργοποίηση, τα credits και η διαχείριση λογαριασμών θα απαιτούν επιβεβαιωμένη 2FA.
+                </p>
+              </div>
+              <Button variant="outline" className="shrink-0 border-amber-600 text-amber-950 hover:bg-amber-100" onClick={() => setActiveTab("accounts")}>
+                Ρύθμιση τώρα
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto bg-muted p-1 gap-1">
             {canManageSettings && <TabsTrigger value="general" className="flex-1 min-w-[100px]">Γενικές</TabsTrigger>}
             {canManageSettings && <TabsTrigger value="pages" className="flex-1 min-w-[100px]">Σελίδες</TabsTrigger>}
@@ -842,10 +887,31 @@ export default function AdminDashboard() {
                           <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3 text-xs font-mono">
                             {twoFactorSetup.recoveryCodes.map((code) => <span key={code}>{code}</span>)}
                           </div>
+                          <div className="space-y-2 rounded-lg border border-primary/20 p-3">
+                            <p className="text-sm font-semibold">Ελέγξτε έναν recovery code πριν ενεργοποιήσετε το 2FA.</p>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="xxxxxxxx-xxxxxxxx"
+                                value={recoveryCodeTest}
+                                onChange={(event) => setRecoveryCodeTest(event.target.value)}
+                                autoComplete="off"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => testRecoveryCode.mutate(recoveryCodeTest.trim())}
+                                disabled={testRecoveryCode.isPending || !recoveryCodeTest.trim()}
+                              >
+                                {testRecoveryCode.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Έλεγχος"}
+                              </Button>
+                            </div>
+                            {recoveryCodeTested && <p className="text-xs font-semibold text-green-700">Ο recovery code ελέγχθηκε επιτυχώς.</p>}
+                          </div>
                           <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); confirmTwoFactor.mutate(twoFactorConfirmCode); }}>
-                            <Input placeholder="123456" value={twoFactorConfirmCode} onChange={(event) => setTwoFactorConfirmCode(event.target.value)} inputMode="numeric" required />
-                            <Button type="submit" disabled={confirmTwoFactor.isPending}>Confirm</Button>
+                            <Input placeholder="123456" value={twoFactorConfirmCode} onChange={(event) => setTwoFactorConfirmCode(event.target.value)} inputMode="numeric" maxLength={6} required />
+                            <Button type="submit" disabled={confirmTwoFactor.isPending || !recoveryCodeTested}>Ενεργοποίηση</Button>
                           </form>
+                          <p className="text-xs text-muted-foreground">Οι recovery codes εμφανίζονται μόνο σε αυτό το βήμα και κάθε κωδικός μπορεί να χρησιμοποιηθεί μία φορά στη σύνδεση.</p>
                         </div>
                       )}
                     </CardContent>

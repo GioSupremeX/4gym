@@ -5,7 +5,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema, insertContactSchema, type AdminUser } from "@shared/schema";
 import { api } from "@shared/routes";
-import { decryptSecret, encryptSecret, generateRecoveryCodes, generateTotpSecret, getClientIp, getLoginLockout, hashPassword, recordFailedLogin, recordSuccessfulLogin, requireAdmin, requireRole, requireSameOrigin, timingSafeLegacyMatch, verifyPassword, verifyTotpCode } from "./auth";
+import { decryptSecret, encryptSecret, generateRecoveryCodes, generateTotpSecret, getClientIp, getLoginLockout, hashPassword, recordFailedLogin, recordSuccessfulLogin, requireAdmin, requireOwnerTwoFactor, requireRole, requireSameOrigin, timingSafeLegacyMatch, verifyPassword, verifyTotpCode } from "./auth";
 
 // Simple in-memory cooldown tracker (IP -> { endpoint: timestamp })
 const cooldownMap = new Map<string, Map<string, number>>();
@@ -89,13 +89,14 @@ function audit(req: Request, action: string, details?: Record<string, unknown>):
   }).catch((error) => console.error("Audit log error:", error));
 }
 
-function completeAdminSession(req: Request, user: AdminUser): Promise<void> {
+function completeAdminSession(req: Request, user: AdminUser, twoFactorVerified = false): Promise<void> {
   return new Promise((resolve, reject) => {
     req.session.regenerate((error) => {
       if (error) return reject(error);
       req.session.isAdmin = true;
       req.session.adminUserId = user.id;
       req.session.authVersion = user.authVersion;
+      req.session.twoFactorVerified = twoFactorVerified;
       req.session.save((saveError) => (saveError ? reject(saveError) : resolve()));
     });
   });
@@ -245,7 +246,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
       return loginError(res, req);
     }
 
-    await completeAdminSession(req, user);
+    await completeAdminSession(req, user, true);
     await storage.updateAdminUser(user.id, { lastLoginAt: new Date() });
     await recordSuccessfulLogin(req);
     void storage.createAuditLog({
@@ -269,13 +270,13 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     });
   });
 
-  app.get("/api/admin/users", requireRole("owner", "admin"), async (_req: Request, res: Response) => {
+  app.get("/api/admin/users", requireRole("owner", "admin"), requireOwnerTwoFactor, async (_req: Request, res: Response) => {
     const users = await storage.getAdminUsers();
     res.setHeader("Cache-Control", "no-store");
     res.json(users.map(safeUser));
   });
 
-  app.post("/api/admin/users", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
+  app.post("/api/admin/users", requireSameOrigin, requireRole("owner", "admin"), requireOwnerTwoFactor, async (req: Request, res: Response) => {
     const usernameResult = usernameSchema.safeParse(req.body?.username);
     if (!usernameResult.success || !validAdminPassword(req.body?.password)) {
       return res.status(400).json({ message: "Χρησιμοποιήστε όνομα χρήστη 3-64 χαρακτήρων και κωδικό τουλάχιστον 12 χαρακτήρων." });
@@ -300,7 +301,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     }
   });
 
-  app.delete("/api/admin/users/:id", requireSameOrigin, requireRole("owner", "admin"), async (req: Request, res: Response) => {
+  app.delete("/api/admin/users/:id", requireSameOrigin, requireRole("owner", "admin"), requireOwnerTwoFactor, async (req: Request, res: Response) => {
     const userId = Number(req.params.id);
     if (!Number.isInteger(userId) || userId === req.adminUser?.id) {
       return res.status(400).json({ message: "Δεν μπορείτε να διαγράψετε τον τρέχοντα λογαριασμό." });
@@ -319,7 +320,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.status(204).end();
   });
 
-  app.post("/api/admin/account/password", requireSameOrigin, requireAdmin, async (req: Request, res: Response) => {
+  app.post("/api/admin/account/password", requireSameOrigin, requireAdmin, requireOwnerTwoFactor, async (req: Request, res: Response) => {
     if (!req.adminUser || typeof req.body?.currentPassword !== "string" || !validAdminPassword(req.body?.newPassword)) {
       return res.status(400).json({ message: "Ο νέος κωδικός πρέπει να έχει τουλάχιστον 12 χαρακτήρες." });
     }
@@ -339,6 +340,9 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
 
   app.get("/api/admin/2fa/setup", requireSameOrigin, requireAdmin, async (req: Request, res: Response) => {
     if (!req.adminUser) return res.status(401).json({ message: "Απαιτείται σύνδεση διαχειριστή." });
+    if (req.adminUser.twoFactorEnabled === "true") {
+      return res.status(409).json({ message: "Η επαλήθευση δύο βημάτων είναι ήδη ενεργή." });
+    }
     const secret = generateTotpSecret();
     const recoveryCodes = generateRecoveryCodes();
     await storage.updateAdminUser(req.adminUser.id, {
@@ -365,11 +369,34 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
       return res.status(400).json({ message: "Ο κωδικός επαλήθευσης δεν είναι σωστός." });
     }
     const updated = await storage.updateAdminUser(user.id, { twoFactorEnabled: "true" });
+    req.session.twoFactorVerified = true;
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((error) => (error ? reject(error) : resolve()));
+    });
     audit(req, "account.2fa_enabled");
     res.json({ enabled: updated?.twoFactorEnabled === "true" });
   });
 
-  app.post("/api/admin/2fa/disable", requireSameOrigin, requireAdmin, async (req: Request, res: Response) => {
+  app.post("/api/admin/2fa/test-recovery-code", requireSameOrigin, requireAdmin, async (req: Request, res: Response) => {
+    if (!req.adminUser || typeof req.body?.code !== "string" || req.body.code.trim().length > 256) {
+      return res.status(400).json({ message: "Ο recovery code δεν είναι έγκυρος." });
+    }
+    const user = await storage.getAdminUserById(req.adminUser.id);
+    if (!user?.twoFactorSecret || user.twoFactorEnabled === "true" || !user.twoFactorRecoveryCodes?.length) {
+      return res.status(400).json({ message: "Δεν υπάρχει ενεργή ρύθμιση 2FA προς έλεγχο." });
+    }
+    let valid = false;
+    for (const hashedCode of user.twoFactorRecoveryCodes) {
+      if (await verifyPassword(req.body.code.trim(), hashedCode)) {
+        valid = true;
+        break;
+      }
+    }
+    if (!valid) return res.status(400).json({ message: "Ο recovery code δεν είναι σωστός." });
+    res.json({ valid: true });
+  });
+
+  app.post("/api/admin/2fa/disable", requireSameOrigin, requireAdmin, requireOwnerTwoFactor, async (req: Request, res: Response) => {
     if (!req.adminUser || typeof req.body?.password !== "string" || !(await verifyPassword(req.body.password, req.adminUser.passwordHash))) {
       return res.status(401).json({ message: "Απαιτείται ο τρέχων κωδικός." });
     }
@@ -463,7 +490,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json(publicSettings(settings));
   });
 
-  app.patch("/api/admin/credits", requireSameOrigin, requireRole("owner"), async (req: Request, res: Response) => {
+  app.patch("/api/admin/credits", requireSameOrigin, requireRole("owner"), requireOwnerTwoFactor, async (req: Request, res: Response) => {
     if (req.body?.creditsEnabled !== "true" && req.body?.creditsEnabled !== "false") {
       return res.status(400).json({ message: "Μη έγκυρη τιμή credits." });
     }

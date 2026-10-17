@@ -232,6 +232,24 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
   next();
 }
 
+export function requireOwnerTwoFactor(req: Request, res: Response, next: NextFunction): void {
+  if (!req.adminUser) {
+    res.status(401).json({ message: "Απαιτείται σύνδεση διαχειριστή." });
+    return;
+  }
+  if (
+    req.adminUser.role === "owner" &&
+    req.adminUser.twoFactorEnabled === "true" &&
+    req.session.twoFactorVerified !== true
+  ) {
+    res.status(403).json({
+      message: "Ο owner πρέπει πρώτα να ολοκληρώσει και να επιβεβαιώσει τη ρύθμιση 2FA.",
+      code: "OWNER_2FA_REQUIRED",
+    });
+    return;
+  }
+  next();
+}
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     await requireAdmin(req, res, () => undefined);

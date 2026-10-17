@@ -21,6 +21,7 @@ declare module "express-session" {
     isAdmin?: boolean;
     adminUserId?: number;
     authVersion?: number;
+    twoFactorVerified?: boolean;
     pendingTwoFactorUserId?: number;
     pendingTwoFactorExpiresAt?: number;
   }
