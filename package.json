@@ -14,7 +14,8 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "security:audit": "npm audit --audit-level=moderate",
-    "security:check": "npm run check && npm run security:audit"
+    "security:check": "npm run check && npm run security:audit",
+    "reset-admin": "tsx scripts/reset-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
