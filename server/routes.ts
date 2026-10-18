@@ -1,6 +1,6 @@
 import { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { z } from "zod";
 import { storage } from "./storage";
 import { insertArticleSchema, insertSiteSettingsSchema, insertAnnouncementSchema, insertCommentSchema, insertReportSchema, insertSubscriberSchema, insertContactSchema, type AdminUser } from "@shared/schema";
@@ -518,10 +518,57 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     res.json({ valid: true });
   });
 
-  app.post("/api/admin/2fa/disable", requireSameOrigin, requireAdmin, requireOwnerTwoFactor, async (req: Request, res: Response) => {
-    if (!req.adminUser || typeof req.body?.password !== "string" || !(await verifyPassword(req.body.password, req.adminUser.passwordHash))) {
-      return res.status(401).json({ message: "Απαιτείται ο τρέχων κωδικός." });
+  app.post("/api/admin/2fa/disable", requireSameOrigin, requireAdmin, async (req: Request, res: Response) => {
+    if (!req.adminUser) {
+      return res.status(401).json({ message: "Απαιτείται σύνδεση διαχειριστή." });
     }
+
+    const rawInput = req.body?.password ?? req.body?.code ?? "";
+    const input = typeof rawInput === "string" ? rawInput.trim() : "";
+
+    let authorized = false;
+
+    // 1. Check account login password
+    if (input && req.adminUser.passwordHash) {
+      try {
+        if (await verifyPassword(input, req.adminUser.passwordHash)) {
+          authorized = true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Check 6-digit TOTP code from Authenticator app
+    if (!authorized && input && req.adminUser.twoFactorSecret) {
+      try {
+        const secret = decryptSecret(req.adminUser.twoFactorSecret);
+        if (verifyTotpCode(secret, input)) {
+          authorized = true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. Check recovery code
+    if (!authorized && input && req.adminUser.twoFactorRecoveryCodes && req.adminUser.twoFactorRecoveryCodes.length > 0) {
+      try {
+        const codeHash = createHash("sha256").update(input.toLowerCase()).digest("hex");
+        if (req.adminUser.twoFactorRecoveryCodes.includes(codeHash)) {
+          authorized = true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!authorized) {
+      return res.status(400).json({
+        message: "Εισάγετε τον κωδικό πρόσβασης του λογαριασμού σας ή τον 6-ψήφιο κωδικό από το Authenticator app.",
+      });
+    }
+
     const nextVersion = req.adminUser.authVersion + 1;
     await storage.updateAdminUser(req.adminUser.id, {
       twoFactorSecret: null,
@@ -530,8 +577,11 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
       authVersion: nextVersion,
     });
     req.session.authVersion = nextVersion;
+    req.session.twoFactorVerified = true;
+    await new Promise<void>((resolve) => req.session.save(() => resolve()));
+
     audit(req, "account.2fa_disabled");
-    res.json({ enabled: false });
+    res.json({ enabled: false, message: "Η επαλήθευση δύο βημάτων απενεργοποιήθηκε επιτυχώς." });
   });
 
   // Articles
