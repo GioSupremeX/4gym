@@ -38,8 +38,16 @@ function getCooldownRemaining(ip: string, endpoint: string, seconds: number): nu
 
 const usernameSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/, "Το όνομα χρήστη πρέπει να έχει 3-64 χαρακτήρες.");
 const strongPasswordSchema = z.string().min(12, "Ο κωδικός πρέπει να έχει τουλάχιστον 12 χαρακτήρες.").max(256);
-const articleImagesSchema = z.array(z.string().max(7_000_000)).max(6).refine(
-  (images) => images.reduce((total, image) => total + image.length, 0) <= 8_000_000,
+const passwordRecoverySchema = z.object({
+  username: usernameSchema,
+  recoveryCodes: z.tuple([
+    z.string().trim().toLowerCase().regex(/^[a-f0-9]{8}-[a-f0-9]{8}$/),
+    z.string().trim().toLowerCase().regex(/^[a-f0-9]{8}-[a-f0-9]{8}$/),
+  ]),
+  newPassword: strongPasswordSchema,
+}).strict();
+const articleImagesSchema = z.array(z.string().max(500_000)).max(6).refine(
+  (images) => images.reduce((total, image) => total + image.length, 0) <= 3_000_000,
   "Οι εικόνες του άρθρου είναι πολύ μεγάλες συνολικά.",
 );
 const articlePayloadSchema = insertArticleSchema.extend({
@@ -127,6 +135,9 @@ function completeAdminSession(req: Request, user: AdminUser, twoFactorVerified =
       req.session.adminUserId = user.id;
       req.session.authVersion = user.authVersion;
       req.session.twoFactorVerified = twoFactorVerified;
+      delete req.session.pendingTwoFactorUserId;
+      delete req.session.pendingTwoFactorExpiresAt;
+      delete req.session.pendingTwoFactorAuthVersion;
       req.session.save((saveError) => (saveError ? reject(saveError) : resolve()));
     });
   });
@@ -138,6 +149,7 @@ function pendingTwoFactorSession(req: Request, user: AdminUser): Promise<void> {
       if (error) return reject(error);
       req.session.pendingTwoFactorUserId = user.id;
       req.session.pendingTwoFactorExpiresAt = Date.now() + 5 * 60 * 1000;
+      req.session.pendingTwoFactorAuthVersion = user.authVersion;
       req.session.save((saveError) => (saveError ? reject(saveError) : resolve()));
     });
   });
@@ -169,11 +181,81 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
     const sessionUser = req.session?.adminUserId
       ? await storage.getAdminUserById(req.session.adminUserId)
       : undefined;
+    const pendingUser = req.session?.pendingTwoFactorUserId
+      ? await storage.getAdminUserById(req.session.pendingTwoFactorUserId)
+      : undefined;
     res.json({
       authenticated: Boolean(sessionUser && sessionUser.active !== "false" && req.session?.authVersion === sessionUser.authVersion),
       user: sessionUser ? safeUser(sessionUser) : undefined,
-      requiresTwoFactor: Boolean(req.session?.pendingTwoFactorUserId),
+      requiresTwoFactor: Boolean(
+        pendingUser &&
+        pendingUser.active !== "false" &&
+        req.session?.pendingTwoFactorExpiresAt &&
+        req.session.pendingTwoFactorExpiresAt > Date.now() &&
+        req.session.pendingTwoFactorAuthVersion === pendingUser.authVersion,
+      ),
     });
+  });
+
+  app.post("/api/admin/password/recover", requireSameOrigin, async (req: Request, res: Response) => {
+    const lockedFor = await getLoginLockout(req);
+    if (lockedFor > 0) {
+      res.setHeader("Retry-After", lockedFor);
+      return res.status(429).json({
+        message: `Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε ξανά σε ${lockedFor} δευτερόλεπτα.`,
+        remainingSeconds: lockedFor,
+      });
+    }
+
+    const parsed = passwordRecoverySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Τα στοιχεία ανάκτησης δεν είναι έγκυρα." });
+    }
+
+    const [firstCode, secondCode] = parsed.data.recoveryCodes;
+    if (firstCode === secondCode) return loginError(res, req);
+
+    const user = await storage.getAdminUserByUsername(parsed.data.username);
+    const storedHashes = user?.twoFactorRecoveryCodes || [];
+    if (
+      !user ||
+      user.active === "false" ||
+      user.twoFactorEnabled !== "true" ||
+      storedHashes.length < 2
+    ) {
+      return loginError(res, req);
+    }
+
+    const matchedHashes = new Set<string>();
+    for (const recoveryCode of parsed.data.recoveryCodes) {
+      for (const storedHash of storedHashes) {
+        if (!matchedHashes.has(storedHash) && await verifyPassword(recoveryCode, storedHash)) {
+          matchedHashes.add(storedHash);
+          break;
+        }
+      }
+    }
+    if (matchedHashes.size !== 2) return loginError(res, req);
+
+    const usedHashes = Array.from(matchedHashes) as [string, string];
+    const remainingHashes = storedHashes.filter((hash) => !matchedHashes.has(hash));
+    const updatedUser = await storage.resetAdminPasswordWithRecoveryCodes(
+      user.id,
+      await hashPassword(parsed.data.newPassword),
+      usedHashes,
+      remainingHashes,
+    );
+    if (!updatedUser) return loginError(res, req);
+
+    await recordSuccessfulLogin(req);
+    void storage.createAuditLog({
+      adminUserId: updatedUser.id,
+      username: updatedUser.username,
+      action: "account.password_recovered",
+      ipAddress: getClientIp(req),
+    }).catch((error) => console.error("Audit log error:", error));
+
+    res.json({ message: "Ο κωδικός άλλαξε. Συνδεθείτε με τον νέο κωδικό και την επαλήθευση δύο βημάτων." });
   });
 
   app.post("/api/admin/login", requireSameOrigin, async (req: Request, res: Response) => {
@@ -244,7 +326,12 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
 
   app.post("/api/admin/verify-2fa", requireSameOrigin, async (req: Request, res: Response) => {
     const pendingUserId = req.session?.pendingTwoFactorUserId;
-    if (!pendingUserId || !req.session.pendingTwoFactorExpiresAt || req.session.pendingTwoFactorExpiresAt < Date.now()) {
+    if (
+      !pendingUserId ||
+      !req.session.pendingTwoFactorExpiresAt ||
+      req.session.pendingTwoFactorExpiresAt < Date.now() ||
+      req.session.pendingTwoFactorAuthVersion === undefined
+    ) {
       return res.status(401).json({ message: "Η επαλήθευση δύο βημάτων έληξε." });
     }
 
@@ -253,19 +340,24 @@ export async function registerRoutes(server: Server, app: Express): Promise<void
       return res.status(400).json({ message: "Ο κωδικός επαλήθευσης δεν είναι έγκυρος." });
     }
 
-    const user = await storage.getAdminUserById(pendingUserId);
+    let user = await storage.getAdminUserById(pendingUserId);
+    if (!user || user.authVersion !== req.session.pendingTwoFactorAuthVersion) {
+      return res.status(401).json({ message: "Η επαλήθευση δύο βημάτων έληξε. Συνδεθείτε ξανά." });
+    }
     let valid = false;
     let usedRecoveryCode = false;
     if (user?.twoFactorEnabled === "true" && user.twoFactorSecret) {
       const secret = decryptSecret(user.twoFactorSecret);
       valid = verifyTotpCode(secret, codeResult.data);
       if (!valid && user.twoFactorRecoveryCodes?.length) {
-        for (let index = 0; index < user.twoFactorRecoveryCodes.length; index += 1) {
-          if (await verifyPassword(codeResult.data, user.twoFactorRecoveryCodes[index])) {
-            valid = true;
-            usedRecoveryCode = true;
-            const remainingCodes = user.twoFactorRecoveryCodes.filter((_, codeIndex) => codeIndex !== index);
-            await storage.updateAdminUser(user.id, { twoFactorRecoveryCodes: remainingCodes });
+        for (const hashedCode of user.twoFactorRecoveryCodes) {
+          if (await verifyPassword(codeResult.data, hashedCode)) {
+            const updatedUser = await storage.consumeAdminRecoveryCode(user.id, hashedCode);
+            if (updatedUser) {
+              user = updatedUser;
+              valid = true;
+              usedRecoveryCode = true;
+            }
             break;
           }
         }

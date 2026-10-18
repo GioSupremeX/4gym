@@ -24,6 +24,7 @@ declare module "express-session" {
     twoFactorVerified?: boolean;
     pendingTwoFactorUserId?: number;
     pendingTwoFactorExpiresAt?: number;
+    pendingTwoFactorAuthVersion?: number;
   }
 }
 
@@ -120,6 +121,7 @@ function requestRateLimit(maxRequests: number, windowMs: number) {
 }
 
 app.use("/api/admin/login", requestRateLimit(20, 60_000));
+app.use("/api/admin/password/recover", requestRateLimit(10, 60_000));
 app.use("/api/contacts", requestRateLimit(15, 60_000));
 app.use("/api/subscribers", requestRateLimit(15, 60_000));
 app.use("/api/comments", requestRateLimit(30, 60_000));

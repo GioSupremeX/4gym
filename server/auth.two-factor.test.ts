@@ -168,6 +168,44 @@ before(async () => {
       users.set(id, updated);
       return updated;
     },
+    consumeAdminRecoveryCode: async (id: number, recoveryCodeHash: string) => {
+      const user = users.get(id);
+      if (
+        !user ||
+        user.active === "false" ||
+        user.twoFactorEnabled !== "true" ||
+        !user.twoFactorRecoveryCodes?.includes(recoveryCodeHash)
+      ) return undefined;
+      const updated = {
+        ...user,
+        twoFactorRecoveryCodes: user.twoFactorRecoveryCodes.filter((hash) => hash !== recoveryCodeHash),
+      };
+      users.set(id, updated);
+      return updated;
+    },
+    resetAdminPasswordWithRecoveryCodes: async (
+      id: number,
+      passwordHash: string,
+      usedHashes: [string, string],
+      remainingHashes: string[],
+    ) => {
+      const user = users.get(id);
+      if (
+        !user ||
+        user.active === "false" ||
+        user.twoFactorEnabled !== "true" ||
+        usedHashes[0] === usedHashes[1] ||
+        !usedHashes.every((hash) => user.twoFactorRecoveryCodes?.includes(hash))
+      ) return undefined;
+      const updated = {
+        ...user,
+        passwordHash,
+        twoFactorRecoveryCodes: remainingHashes,
+        authVersion: user.authVersion + 1,
+      };
+      users.set(id, updated);
+      return updated;
+    },
     createAdminUser: async (input: Partial<AdminUser>) => {
       const id = Math.max(...users.keys()) + 1;
       const created = {
@@ -206,7 +244,7 @@ before(async () => {
   });
 
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
   app.use(
     session({
       secret: "test-only-session-secret-for-auth-tests",
@@ -343,4 +381,74 @@ test("owner 2FA enrollment, enforcement, login, and role permissions", async () 
     creditsEnabled: "true",
   });
   assert.equal(oldSession.response.status, 401);
+
+  const validArticleImage = await request(owner, "/api/articles", "POST", {
+    title: "Compressed image",
+    content: "Image size check",
+    imageUrls: ["data:image/webp;base64,AA=="],
+  });
+  assert.equal(validArticleImage.response.status, 200, "valid compressed article images can be saved");
+  const oversizedArticleImage = await request(owner, "/api/articles", "POST", {
+    title: "Oversized image",
+    content: "Image size check",
+    imageUrls: [`data:image/webp;base64,${"A".repeat(500_000)}`],
+  });
+  assert.equal(oversizedArticleImage.response.status, 400, "oversized article images are rejected before saving");
+
+  const validImageUpdate = await request(owner, "/api/settings", "PATCH", {
+    logoUrl: "data:image/webp;base64,AA==",
+  });
+  assert.equal(validImageUpdate.response.status, 200, "compressed setting images can be saved");
+  const invalidImageUpdate = await request(owner, "/api/settings", "PATCH", {
+    logoUrl: "data:text/html;base64,PGh0bWw+",
+  });
+  assert.equal(invalidImageUpdate.response.status, 400, "non-image data URLs are rejected");
+
+  const recoveryPayload = {
+    username: "administrator",
+    recoveryCodes: [
+      setup.data.recoveryCodes[1] as string,
+      setup.data.recoveryCodes[2] as string,
+    ],
+    newPassword: "Recovered-Test-Password-456!",
+  };
+  const disabledTwoFactorRecovery = await request({}, "/api/admin/password/recover", "POST", {
+    ...recoveryPayload,
+    username: "testadmin",
+  });
+  assert.equal(disabledTwoFactorRecovery.response.status, 401, "password recovery requires active 2FA");
+
+  const duplicateRecovery = await request({}, "/api/admin/password/recover", "POST", {
+    ...recoveryPayload,
+    recoveryCodes: [recoveryPayload.recoveryCodes[0], recoveryPayload.recoveryCodes[0]],
+  });
+  assert.equal(duplicateRecovery.response.status, 401, "the same recovery code cannot satisfy both factors");
+
+  const stalePendingSession = await login("administrator", "Updated-Test-Password-456!");
+  const reset = await request({}, "/api/admin/password/recover", "POST", recoveryPayload);
+  assert.equal(reset.response.status, 200, "two unused recovery codes reset the password");
+  assert.equal(users.get(1)?.twoFactorRecoveryCodes?.length, 5, "both reset codes are consumed");
+  assert.equal(users.get(1)?.authVersion, 3, "password recovery revokes existing sessions");
+  assert.equal(
+    (await request(stalePendingSession, "/api/admin/session")).data.requiresTwoFactor,
+    false,
+    "password recovery invalidates older pending 2FA sessions",
+  );
+  assert.equal(
+    (await request(stalePendingSession, "/api/admin/verify-2fa", "POST", {
+      code: auth.generateTotpCode(setup.data.secret),
+    })).response.status,
+    401,
+  );
+  assert.equal((await request(owner, "/api/admin/credits", "PATCH", { creditsEnabled: "true" })).response.status, 401);
+
+  const recoveredLogin = await login("administrator", recoveryPayload.newPassword);
+  const reusedResetCode = await request(recoveredLogin, "/api/admin/verify-2fa", "POST", {
+    code: recoveryPayload.recoveryCodes[0],
+  });
+  assert.equal(reusedResetCode.response.status, 401, "recovery codes used for reset cannot later sign in");
+  const recoveredTotp = await request(recoveredLogin, "/api/admin/verify-2fa", "POST", {
+    code: auth.generateTotpCode(setup.data.secret),
+  });
+  assert.equal(recoveredTotp.response.status, 200, "the recovered password still requires and accepts 2FA");
 });

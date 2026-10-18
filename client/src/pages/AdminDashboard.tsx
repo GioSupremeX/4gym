@@ -48,7 +48,7 @@ const rolePermissions: Record<string, string> = {
 
 const MAX_ARTICLE_IMAGES = 6;
 const MAX_IMAGE_EDGE = 1920;
-const MAX_COMPRESSED_IMAGE_BYTES = 1_200_000;
+const MAX_COMPRESSED_IMAGE_BYTES = 350_000;
 const MAX_SETTING_IMAGE_EDGE = 1600;
 const MAX_SETTING_IMAGE_BYTES = 450_000;
 
@@ -199,6 +199,10 @@ export default function AdminDashboard() {
   const [username, setUsername] = useState("");
   const [passcode, setPasscode] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+  const [recoveryCodeOne, setRecoveryCodeOne] = useState("");
+  const [recoveryCodeTwo, setRecoveryCodeTwo] = useState("");
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const [settingsImageUrls, setSettingsImageUrls] = useState({
@@ -249,7 +253,7 @@ export default function AdminDashboard() {
           remainingSeconds?: number;
           attemptsRemaining?: number;
         };
-        error.remainingSeconds = body.remainingSeconds;
+        error.remainingSeconds = body.remainingSeconds || Number(res.headers.get("Retry-After")) || undefined;
         error.attemptsRemaining = body.attemptsRemaining;
         throw error;
       }
@@ -279,6 +283,53 @@ export default function AdminDashboard() {
         : "";
       toast({
         title: "Η πρόσβαση απορρίφθηκε",
+        description: `${authError.message}${attemptsMessage}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const recoverPassword = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/password/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          username,
+          recoveryCodes: [recoveryCodeOne, recoveryCodeTwo],
+          newPassword: recoveryNewPassword,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const error = new Error(body.message || "Η ανάκτηση κωδικού απέτυχε.") as Error & {
+          remainingSeconds?: number;
+          attemptsRemaining?: number;
+        };
+        error.remainingSeconds = body.remainingSeconds || Number(res.headers.get("Retry-After")) || undefined;
+        error.attemptsRemaining = body.attemptsRemaining;
+        throw error;
+      }
+      return body;
+    },
+    onSuccess: (body) => {
+      setPasscode("");
+      setRecoveryCodeOne("");
+      setRecoveryCodeTwo("");
+      setRecoveryNewPassword("");
+      setShowPasswordRecovery(false);
+      setCooldownSeconds(0);
+      toast({ title: "Ο κωδικός άλλαξε", description: body.message });
+    },
+    onError: (error) => {
+      const authError = error as Error & { remainingSeconds?: number; attemptsRemaining?: number };
+      if (authError.remainingSeconds) setCooldownSeconds(authError.remainingSeconds);
+      const attemptsMessage = authError.attemptsRemaining
+        ? ` Απομένουν ${authError.attemptsRemaining} προσπάθειες.`
+        : "";
+      toast({
+        title: "Η ανάκτηση απέτυχε",
         description: `${authError.message}${attemptsMessage}`,
         variant: "destructive",
       });
@@ -705,7 +756,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (authLoading || settingsLoading || articlesLoading || annLoading) {
+  if (authLoading || (isAuthenticated && (settingsLoading || articlesLoading || annLoading))) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -722,10 +773,107 @@ export default function AdminDashboard() {
               <Settings className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl font-display font-bold text-primary">
-              {twoFactorRequired ? "Two-Step Verification" : "Control Room Access"}
+              {twoFactorRequired ? "Two-Step Verification" : showPasswordRecovery ? "Recover Password" : "Control Room Access"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {showPasswordRecovery && !twoFactorRequired ? (
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (
+                    username &&
+                    recoveryCodeOne.trim() &&
+                    recoveryCodeTwo.trim() &&
+                    recoveryCodeOne.trim().toLowerCase() !== recoveryCodeTwo.trim().toLowerCase() &&
+                    recoveryNewPassword.length >= 12 &&
+                    cooldownSeconds === 0 &&
+                    !recoverPassword.isPending
+                  ) {
+                    recoverPassword.mutate();
+                  }
+                }}
+              >
+                <p className="text-sm text-muted-foreground">
+                  Χρησιμοποιήστε δύο διαφορετικούς, αχρησιμοποίητους κωδικούς ανάκτησης από τη ρύθμιση 2FA και ορίστε νέο κωδικό πρόσβασης.
+                </p>
+                <div className="space-y-2">
+                  <label htmlFor="recovery-username" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Username</label>
+                  <Input
+                    id="recovery-username"
+                    value={username}
+                    autoComplete="username"
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="recovery-code-one" className="text-sm font-bold text-muted-foreground">Recovery code 1</label>
+                  <Input
+                    id="recovery-code-one"
+                    value={recoveryCodeOne}
+                    maxLength={17}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="xxxxxxxx-xxxxxxxx"
+                    onChange={(e) => setRecoveryCodeOne(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="recovery-code-two" className="text-sm font-bold text-muted-foreground">Recovery code 2</label>
+                  <Input
+                    id="recovery-code-two"
+                    value={recoveryCodeTwo}
+                    maxLength={17}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="xxxxxxxx-xxxxxxxx"
+                    onChange={(e) => setRecoveryCodeTwo(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="recovery-new-password" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">New password</label>
+                  <Input
+                    id="recovery-new-password"
+                    type="password"
+                    value={recoveryNewPassword}
+                    minLength={12}
+                    maxLength={256}
+                    autoComplete="new-password"
+                    onChange={(e) => setRecoveryNewPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    !username ||
+                    !recoveryCodeOne.trim() ||
+                    !recoveryCodeTwo.trim() ||
+                    recoveryCodeOne.trim().toLowerCase() === recoveryCodeTwo.trim().toLowerCase() ||
+                    recoveryNewPassword.length < 12 ||
+                    cooldownSeconds > 0 ||
+                    recoverPassword.isPending
+                  }
+                >
+                  {recoverPassword.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {cooldownSeconds > 0 ? `Δοκιμάστε ξανά σε ${cooldownSeconds}δ.` : "Reset password"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setShowPasswordRecovery(false);
+                    setRecoveryCodeOne("");
+                    setRecoveryCodeTwo("");
+                    setRecoveryNewPassword("");
+                  }}
+                >
+                  Back to sign in
+                </Button>
+              </form>
+            ) : (
             <form
               className="space-y-4"
               onSubmit={(e) => {
@@ -790,6 +938,12 @@ export default function AdminDashboard() {
                 {twoFactorRequired ? "Χρησιμοποιήστε τον εξαψήφιο κωδικό ή ένα recovery code." : "Μετά από 3 αποτυχημένες προσπάθειες ενεργοποιείται προσωρινό κλείδωμα."}
               </p>
             </form>
+            )}
+            {!twoFactorRequired && !showPasswordRecovery && (
+              <Button type="button" variant="ghost" className="w-full underline" onClick={() => setShowPasswordRecovery(true)}>
+                Forgot password?
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

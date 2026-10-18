@@ -1,6 +1,6 @@
 import { articles, siteSettings, announcements, comments, reportedComments, subscribers, contacts, adminUsers, adminLoginAttempts, adminAuditLogs, type Article, type InsertArticle, type SiteSettings, type UpdateSiteSettings, type Announcement, type InsertAnnouncement, type Comment, type InsertComment, type ReportedComment, type InsertReport, type Subscriber, type InsertSubscriber, type Contact, type InsertContact, type AdminUser, type InsertAdminUser, type AdminLoginAttempt, type AdminAuditLog } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, lt } from "drizzle-orm";
+import { eq, desc, and, lt, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Articles
@@ -25,6 +25,13 @@ export interface IStorage {
   getAdminUserByUsername(username: string): Promise<AdminUser | undefined>;
   createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
   updateAdminUser(id: number, update: Partial<InsertAdminUser>): Promise<AdminUser | undefined>;
+  consumeAdminRecoveryCode(id: number, recoveryCodeHash: string): Promise<AdminUser | undefined>;
+  resetAdminPasswordWithRecoveryCodes(
+    id: number,
+    passwordHash: string,
+    usedRecoveryCodeHashes: [string, string],
+    remainingRecoveryCodeHashes: string[],
+  ): Promise<AdminUser | undefined>;
   deleteAdminUser(id: number): Promise<void>;
   getLoginAttempt(key: string): Promise<AdminLoginAttempt | undefined>;
   saveLoginAttempt(key: string, update: {
@@ -156,6 +163,45 @@ export class DatabaseStorage implements IStorage {
 
   async updateAdminUser(id: number, update: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
     const [updated] = await db.update(adminUsers).set(update).where(eq(adminUsers.id, id)).returning();
+    return updated;
+  }
+
+  async consumeAdminRecoveryCode(id: number, recoveryCodeHash: string): Promise<AdminUser | undefined> {
+    const [updated] = await db
+      .update(adminUsers)
+      .set({
+        twoFactorRecoveryCodes: sql`array_remove(${adminUsers.twoFactorRecoveryCodes}, ${recoveryCodeHash})`,
+      })
+      .where(and(
+        eq(adminUsers.id, id),
+        eq(adminUsers.active, "true"),
+        eq(adminUsers.twoFactorEnabled, "true"),
+        sql`${adminUsers.twoFactorRecoveryCodes} @> ARRAY[${recoveryCodeHash}]::text[]`,
+      ))
+      .returning();
+    return updated;
+  }
+
+  async resetAdminPasswordWithRecoveryCodes(
+    id: number,
+    passwordHash: string,
+    usedRecoveryCodeHashes: [string, string],
+    remainingRecoveryCodeHashes: string[],
+  ): Promise<AdminUser | undefined> {
+    const [updated] = await db
+      .update(adminUsers)
+      .set({
+        passwordHash,
+        twoFactorRecoveryCodes: remainingRecoveryCodeHashes,
+        authVersion: sql`${adminUsers.authVersion} + 1`,
+      })
+      .where(and(
+        eq(adminUsers.id, id),
+        eq(adminUsers.active, "true"),
+        eq(adminUsers.twoFactorEnabled, "true"),
+        sql`${adminUsers.twoFactorRecoveryCodes} @> ARRAY[${usedRecoveryCodeHashes[0]}, ${usedRecoveryCodeHashes[1]}]::text[]`,
+      ))
+      .returning();
     return updated;
   }
 
